@@ -1,0 +1,45 @@
+# ENSO Intelligence Platform — Phase 1 (MVP) dependencies
+# Python 3.12 recommended (matches Hugging Face Spaces; avoids missing wheels
+# for the Phase 2 ML/geo stack on bleeding-edge Pythons).
+#
+#   py -3.12 -m venv .venv
+#   .venv\Scripts\activate            # Windows
+#   pip install -r requirements.txt
+
+# --- Core data ---
+pandas==3.0.3
+numpy==2.5.0
+pyarrow==24.0.0            # parquet engine
+
+# --- Data access / parsing ---
+requests==2.34.2
+beautifulsoup4==4.15.0     # CPC HTML ONI fallback
+lxml==6.1.1                # html/xml parser backend
+openpyxl==3.1.5            # World Bank Pink Sheet .xlsx
+pypdf==6.14.2              # live ENSO advisory PDF
+python-dotenv==1.2.2       # .env credential loading (Phase 2 sources)
+
+# --- Dashboard / visualization ---
+panel==1.9.3               # primary HoloViz dashboard framework
+plotly==6.8.0              # gauge + ONI time series
+altair==6.2.2              # sector-impact correlation heatmap
+bokeh==3.9.1               # Panel rendering backend
+hvplot==0.12.2             # high-level HoloViz plotting
+
+# --- Static export (chart PNG download / CI snapshots) ---
+kaleido==1.3.0             # Plotly -> PNG
+vl-convert-python==1.9.0.post1   # Altair/Vega -> PNG
+
+# --- Phase 2: forecasting + causation (installed) ---
+scipy==1.18.0              # CCM nearest-neighbour (cKDTree), stats
+statsmodels==0.14.6        # SARIMA baseline + Granger causality
+torch==2.12.1              # LSTM forecaster (install CPU build, see below)
+# CPU-only PyTorch keeps the image small and matches HF free tier:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+# NOTE: Convergent Cross Mapping is implemented in-repo (numpy/scipy simplex
+# projection) — no pyEDM dependency (its multiprocessing is brittle under a
+# dashboard server on Windows).
+
+# --- Phase 2 remaining (NOT installed yet; see README roadmap) ---
+# xarray netcdf4 cdsapi climpred xskillscore   # ERA5 CNN + gridded verification
+# cartopy geopandas shapely rasterio rioxarray regionmask pydeck  # global map

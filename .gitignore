@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Credentials / secrets (Phase 2 data sources)
+.env
+.cdsapirc
+
+# Claude Code local settings (keep launch.json, ignore machine-local prefs)
+.claude/settings.local.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Logs & temp render artifacts
+*.log
+_*.png
+_*.html
+_probe.py
+_render*.py
+
+# Large Phase 2 raw downloads (keep processed parquet caches in git)
+data/raw/
+*.grib
+*.nc
+*.tif
+*.tiff
+
+# NOTE: data/cache/*.parquet IS intentionally tracked (small, reproducible
+# snapshots that let the dashboard run without re-fetching). See README.
