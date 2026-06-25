@@ -34,7 +34,7 @@ for p in (
 ):
     sys.path.insert(0, str(p))
 
-from theme import COLORS, load_phases  # noqa: E402
+from theme import COLORS, CACHE_DIR, load_phases  # noqa: E402
 from oni_gauge import build_gauge  # noqa: E402
 from timeseries import build_oni_timeseries  # noqa: E402
 from enso_phase_labeler import event_summary  # noqa: E402
@@ -110,6 +110,16 @@ def build_app() -> pn.viewable.Viewable:
     latest_value = float(latest["value"])
     latest_label = f"{latest['season']} {int(latest['year'])}"
 
+    # RONI overlay (computed from ERSSTv5); degrade gracefully if not generated.
+    roni_df = None
+    latest_roni = None
+    try:
+        _r = pd.read_parquet(CACHE_DIR / "roni.parquet")
+        roni_df = _r[["date", "roni"]].rename(columns={"roni": "value"})
+        latest_roni = float(_r.iloc[-1]["roni"])
+    except Exception:  # noqa: BLE001 - overlay is optional
+        pass
+
     # Current phase/intensity from the labeled record (live data, not hardcoded).
     in_event = pd.notna(latest.get("event_id"))
     simple_phase = latest["phase_simple"]
@@ -142,7 +152,8 @@ def build_app() -> pn.viewable.Viewable:
         f"flex-wrap:wrap;gap:12px;'>"
         f"<div><p class='enso-title'>🌊 ENSO Monitor</p>"
         f"<p class='enso-subtitle'>El Niño–Southern Oscillation · live NOAA CPC data · "
-        f"index: <b style='color:{COLORS['teal']}'>ONI</b></p></div>"
+        f"indices: <b style='color:{COLORS['teal']}'>ONI</b> + "
+        f"<b style='color:{COLORS['el_nino']}'>RONI</b></p></div>"
         f"<div style='text-align:right;'>"
         f"<span class='enso-badge' style='background:{badge_color};color:#0a0e1a;'>"
         f"{status_text}</span>"
@@ -151,8 +162,17 @@ def build_app() -> pn.viewable.Viewable:
         sizing_mode="stretch_width",
     )
 
+    if latest_roni is not None:
+        roni_card = _stat_card(
+            "Latest RONI", f"{latest_roni:+.2f}°C",
+            f"{latest_value - latest_roni:+.2f}°C vs ONI (warming removed)",
+            COLORS["el_nino"])
+    else:
+        roni_card = _stat_card("Latest RONI", "—", "run roni_calculator", COLORS["muted"])
+
     cards = pn.Row(
         _stat_card("Latest ONI", f"{latest_value:+.2f}°C", latest_label, COLORS["teal"]),
+        roni_card,
         _stat_card("Phase", simple_phase, "±0.5°C threshold", phase_color),
         _stat_card("Event intensity", intensity,
                    "NOAA tier" if in_event else "no active event", COLORS["text"]),
@@ -174,7 +194,8 @@ def build_app() -> pn.viewable.Viewable:
     )
 
     ts = pn.pane.Plotly(
-        build_oni_timeseries(phases, events, index_label="ONI"),
+        build_oni_timeseries(phases, events, index_label="ONI",
+                             secondary=roni_df, secondary_label="RONI (ERSST)"),
         config={"displayModeBar": True, "toImageButtonOptions": {"format": "png"}},
         sizing_mode="stretch_width",
     )
@@ -199,12 +220,14 @@ def build_app() -> pn.viewable.Viewable:
 
     disclaimer = pn.pane.HTML(
         "<div class='enso-disclaimer'>"
-        "<b>Index disclaimer.</b> This chart uses <b>ONI</b> (rolling 3-month Niño-3.4 "
-        "anomaly). NOAA adopted <b>RONI</b> (Relative ONI) as the official ENSO index on "
-        "16 Feb 2026; RONI subtracts tropical-mean SST and reclassifies some events "
-        "(e.g. 2023–24 registers ~0.6°C cooler). Historical classifications differ "
-        "between indices. The ONI 3-month mean lags the raw weekly Niño-3.4, which can "
-        "spike earlier. &nbsp;<i>Advisory source: " + adv_source + ".</i></div>",
+        "<b>Index disclaimer.</b> Teal line = official CPC <b>ONI</b> (rolling 3-month "
+        "Niño-3.4 anomaly). Dotted coral line = <b>RONI</b>, which NOAA adopted as the "
+        "official ENSO index on 16 Feb 2026; it subtracts tropical-mean SST so recent "
+        "events register cooler (e.g. 2023–24 ≈0.6°C lower) — visible as RONI sitting "
+        "below ONI in recent decades. Our RONI is <i>computed from ERSSTv5</i> on a fixed "
+        "1991–2020 base (the official RONI uses ONI's rolling base), so it approximates "
+        "rather than reproduces the operational value. The ONI 3-month mean also lags the "
+        "raw weekly Niño-3.4. &nbsp;<i>Advisory source: " + adv_source + ".</i></div>",
         sizing_mode="stretch_width",
     )
 

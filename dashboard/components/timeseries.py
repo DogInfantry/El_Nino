@@ -31,6 +31,8 @@ def build_oni_timeseries(
     *,
     index_label: str = "ONI",
     title: str | None = None,
+    secondary: pd.DataFrame | None = None,
+    secondary_label: str = "RONI",
 ) -> go.Figure:
     """Build the shaded index time series.
 
@@ -38,6 +40,8 @@ def build_oni_timeseries(
     ----------
     phases : tidy frame with ``date`` and ``value`` columns (labeled output).
     events : per-event summary with ``phase``, ``start``, ``end`` columns.
+    secondary : optional tidy frame (``date``, ``value``) drawn as a second
+        overlaid line (e.g. RONI vs ONI), with the legend enabled.
     """
     fig = go.Figure()
 
@@ -80,6 +84,20 @@ def build_oni_timeseries(
         )
     )
 
+    # Optional secondary index (e.g. RONI) overlaid for comparison.
+    if secondary is not None and not secondary.empty:
+        fig.add_trace(
+            go.Scatter(
+                x=secondary["date"],
+                y=secondary["value"],
+                mode="lines",
+                name=secondary_label,
+                line=dict(color=COLORS["el_nino"], width=1.4, dash="dot"),
+                hovertemplate="%{x|%b %Y}<br>" + secondary_label
+                + ": %{y:+.2f} °C<extra></extra>",
+            )
+        )
+
     # Landmark annotations.
     for label, date in LANDMARKS.items():
         ts = pd.Timestamp(date)
@@ -117,6 +135,8 @@ def build_oni_timeseries(
             rangeslider=dict(visible=True, thickness=0.06),
             gridcolor="rgba(138,148,166,0.08)",
         ),
-        showlegend=False,
+        showlegend=secondary is not None and not secondary.empty,
+        legend=dict(orientation="h", yanchor="bottom", y=1.0, x=0,
+                    bgcolor="rgba(0,0,0,0)"),
     )
     return fig

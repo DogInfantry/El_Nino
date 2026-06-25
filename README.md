@@ -16,6 +16,7 @@ This is not a weather app. It is a **Bloomberg-meets-climate-science terminal**:
 | Commodity prices (1960–present) | `data/ingest/pink_sheet.py` | ✅ live (71 commodities) |
 | Live ENSO advisory (runtime) | `data/ingest/advisory_fetcher.py` | ✅ live PDF parse |
 | ENSO phase / event labeling | `data/process/enso_phase_labeler.py` | ✅ 42 events detected |
+| **RONI (Relative ONI)** | `data/process/roni_calculator.py` | ✅ computed from ERSSTv5 |
 | Lagged cross-correlation engine | `data/process/lag_correlator.py` | ✅ |
 | **SARIMA baseline + backtest** | `forecasting/baselines/arima_model.py` | ✅ beats persistence 12/12 leads |
 | **LSTM forecaster** | `forecasting/ml_models/lstm_enso.py` | ✅ PyTorch, same harness |
@@ -23,7 +24,7 @@ This is not a weather app. It is a **Bloomberg-meets-climate-science terminal**:
 | **Ensemble** | `forecasting/ensemble.py` | ✅ model averaging |
 | **Granger + CCM causation engine** | `data/process/granger_ccm.py` | ✅ self-contained CCM |
 | **ERSSTv5 SST-anomaly grids** | `data/ingest/ersst_fetcher.py` | ✅ live (2°×2°, 1854–present) |
-| **ENSO Monitor** dashboard | `dashboard/pages/01_enso_monitor.py` | ✅ |
+| **ENSO Monitor** dashboard | `dashboard/pages/01_enso_monitor.py` | ✅ ONI/RONI dual series |
 | **Global Map** dashboard (SST + teleconnections) | `dashboard/pages/02_global_map.py` | ✅ flat + globe |
 | **Forecast** dashboard (fan chart) | `dashboard/pages/03_forecast.py` | ✅ |
 | **Sector Impact** dashboard | `dashboard/pages/04_sector_impact.py` | ✅ |
@@ -123,7 +124,7 @@ This platform reports observational and model data with known limitations. **Rea
 enso-intelligence-platform/
 ├── data/
 │   ├── ingest/        oni_fetcher · pink_sheet · advisory_fetcher · ersst_fetcher · _common
-│   ├── process/       enso_phase_labeler · lag_correlator · granger_ccm
+│   ├── process/       enso_phase_labeler · lag_correlator · granger_ccm · roni_calculator
 │   ├── raw/           ERSSTv5 netCDF (gitignored, ~150 MB)
 │   └── cache/         oni · commodities · enso_phases · sst_anomaly_grids · *_backtest/forecast
 ├── dashboard/
@@ -162,8 +163,6 @@ while wheat → ONI collapses). Surrogate (phase-randomized) significance is a
 planned addition; verdicts are exploratory.
 
 ## 🛣️ Roadmap
-
-**Phase 1.5** — `roni_fetcher.py` (official RONI index) → ONI/RONI dual time series on the monitor.
 
 **Phase 2 — remaining**
 - Hugging Face Spaces deployment (Gradio forecast demo)
