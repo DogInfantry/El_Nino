@@ -29,6 +29,7 @@ This is not a weather app. It is a **Bloomberg-meets-climate-science terminal**:
 | **Forecast** dashboard (fan chart) | `dashboard/pages/03_forecast.py` | ✅ |
 | **Sector Impact** dashboard | `dashboard/pages/04_sector_impact.py` | ✅ |
 | **Causation Explorer** dashboard | `dashboard/pages/05_causation.py` | ✅ |
+| **Historical Events** dashboard | `dashboard/pages/06_historical.py` | ✅ event cards + cost |
 
 Remaining Phase 2 (HF Spaces deployment, EM-DAT bubbles, surrogate significance) — see [Roadmap](#-roadmap).
 
@@ -130,7 +131,7 @@ enso-intelligence-platform/
 ├── dashboard/
 │   ├── theme.py       palette + Plotly template + cache loaders
 │   ├── components/    oni_gauge · timeseries · globe_layer
-│   └── pages/         01_monitor · 02_global_map · 03_forecast · 04_sector_impact · 05_causation
+│   └── pages/         01_monitor · 02_global_map · 03_forecast · 04_sector_impact · 05_causation · 06_historical
 ├── forecasting/
 │   ├── baselines/     arima_model
 │   ├── ml_models/     lstm_enso
@@ -169,7 +170,6 @@ planned addition; verdicts are exploratory.
 - EM-DAT disaster-event bubbles + time animation on the global map
 - ERA5 CNN (Ham 2019 reproduction) + `climpred` gridded skill verification
 - Phase-randomized **surrogate** significance for the causation explorer
-- Historical event cards (peak ONI/RONI, duration, Callahan & Mankin 2023 economic cost)
 
 ---
 
