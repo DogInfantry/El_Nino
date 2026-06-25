@@ -40,6 +40,13 @@ torch==2.12.1              # LSTM forecaster (install CPU build, see below)
 # projection) — no pyEDM dependency (its multiprocessing is brittle under a
 # dashboard server on Windows).
 
+# --- Phase 2: global map (installed) ---
+xarray==2026.4.0           # ERSSTv5 netCDF -> anomaly grids
+netcdf4==1.7.4             # netCDF backend
+# Map is rendered with Plotly Scattergeo (self-contained, no basemap token,
+# server-renderable for verification). pydeck is installed as an optional
+# drop-in for a 3-D extruded look but is NOT required.
+
 # --- Phase 2 remaining (NOT installed yet; see README roadmap) ---
-# xarray netcdf4 cdsapi climpred xskillscore   # ERA5 CNN + gridded verification
-# cartopy geopandas shapely rasterio rioxarray regionmask pydeck  # global map
+# cdsapi climpred xskillscore        # ERA5 CNN + gridded verification
+# geopandas shapely rioxarray regionmask   # EM-DAT bubbles / advanced geo

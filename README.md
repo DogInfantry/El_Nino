@@ -22,12 +22,14 @@ This is not a weather app. It is a **Bloomberg-meets-climate-science terminal**:
 | **Skill verification (ACC/RMSE/MSSS)** | `forecasting/verification/skill_metrics.py` | ✅ vs persistence |
 | **Ensemble** | `forecasting/ensemble.py` | ✅ model averaging |
 | **Granger + CCM causation engine** | `data/process/granger_ccm.py` | ✅ self-contained CCM |
+| **ERSSTv5 SST-anomaly grids** | `data/ingest/ersst_fetcher.py` | ✅ live (2°×2°, 1854–present) |
 | **ENSO Monitor** dashboard | `dashboard/pages/01_enso_monitor.py` | ✅ |
+| **Global Map** dashboard (SST + teleconnections) | `dashboard/pages/02_global_map.py` | ✅ flat + globe |
 | **Forecast** dashboard (fan chart) | `dashboard/pages/03_forecast.py` | ✅ |
 | **Sector Impact** dashboard | `dashboard/pages/04_sector_impact.py` | ✅ |
 | **Causation Explorer** dashboard | `dashboard/pages/05_causation.py` | ✅ |
 
-Remaining Phase 2 (global teleconnection map, HF Spaces deployment) — see [Roadmap](#-roadmap).
+Remaining Phase 2 (HF Spaces deployment, EM-DAT bubbles, surrogate significance) — see [Roadmap](#-roadmap).
 
 ---
 
@@ -120,13 +122,14 @@ This platform reports observational and model data with known limitations. **Rea
 ```
 enso-intelligence-platform/
 ├── data/
-│   ├── ingest/        oni_fetcher · pink_sheet · advisory_fetcher · _common
+│   ├── ingest/        oni_fetcher · pink_sheet · advisory_fetcher · ersst_fetcher · _common
 │   ├── process/       enso_phase_labeler · lag_correlator · granger_ccm
-│   └── cache/         oni · commodities · enso_phases · *_backtest/forecast (.parquet)
+│   ├── raw/           ERSSTv5 netCDF (gitignored, ~150 MB)
+│   └── cache/         oni · commodities · enso_phases · sst_anomaly_grids · *_backtest/forecast
 ├── dashboard/
 │   ├── theme.py       palette + Plotly template + cache loaders
-│   ├── components/    oni_gauge · timeseries
-│   └── pages/         01_enso_monitor · 03_forecast · 04_sector_impact · 05_causation
+│   ├── components/    oni_gauge · timeseries · globe_layer
+│   └── pages/         01_monitor · 02_global_map · 03_forecast · 04_sector_impact · 05_causation
 ├── forecasting/
 │   ├── baselines/     arima_model
 │   ├── ml_models/     lstm_enso
@@ -163,11 +166,11 @@ planned addition; verdicts are exploratory.
 **Phase 1.5** — `roni_fetcher.py` (official RONI index) → ONI/RONI dual time series on the monitor.
 
 **Phase 2 — remaining**
+- Hugging Face Spaces deployment (Gradio forecast demo)
+- EM-DAT disaster-event bubbles + time animation on the global map
 - ERA5 CNN (Ham 2019 reproduction) + `climpred` gridded skill verification
-- `pydeck` global teleconnection map (SST anomaly layer, EM-DAT disaster bubbles, time animation)
 - Phase-randomized **surrogate** significance for the causation explorer
 - Historical event cards (peak ONI/RONI, duration, Callahan & Mankin 2023 economic cost)
-- Hugging Face Spaces deployment (Gradio forecast demo)
 
 ---
 
