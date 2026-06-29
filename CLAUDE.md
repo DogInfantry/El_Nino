@@ -131,7 +131,9 @@ use explicit file names or a manifest).
 | `data/process/lag_correlator.py` | `correlation_matrix(ONI, wide_prices, max_lag, do_detrend)` → tidy df of Pearson r; `peak_lags()` for sort order |
 | `data/process/roni_calculator.py` | Computes RONI from ERSSTv5 (Niño-3.4 anom minus 20S–20N tropical-mean anom, 3-month running mean, fixed 1991–2020 base) → `roni.parquet` |
 | `data/process/granger_ccm.py` | `analyze(ONI, series, maxlag, mode)` → dict with `granger_oni_to_target`, `granger_target_to_oni`, `ccm`. Self-coded CCM (`ccm_convergence`) via simplex projection. |
-| `data/process/enso_flavor_iod.py` | **NEW (2026-06-28). The India "depth" engine.** Computes from ERSSTv5: ENSO flavor (Niño-3/Niño-4, EMI), IOD/DMI (SON peak). `build_table()` = El Niño-year ENSO×IOD×flavor table (Fisher exact); `powered()` = full-sample (n=117) OLS `monsoon% ~ ENSO + IOD` + the ENSO×IOD base-rate grid. Needs `monsoon_india.parquet`. |
+| `data/process/enso_flavor_iod.py` | **The India "depth" engine.** From ERSSTv5: ENSO flavor (Niño-3/4, EMI), IOD/DMI (SON peak). `scenario_outputs()`/`write_cache()` → `india_enso_iod.parquet` (grid), `india_regression.parquet` (OLS n=117), `india_years.parquet`. `powered()` prints. Needs `monsoon_india.parquet`. |
+| `data/process/exposure_index.py` | **NEW (2026-06-29).** Constructed ENSO Exposure Index per country (`index=100*(0.5*C+0.5*E)`; C=computed peak |lagged ONI-commodity corr|, E=curated). → `exposure_index.parquet`. Drives the landing choropleth + leaderboard. |
+| `data/process/landing_causation.py` | **NEW (2026-06-29).** Precomputes the landing's 6 ONI→commodity causal verdicts (live Granger+CCM) → `landing_ccm.parquet` (curves) + `landing_verdicts.parquet`. Real result: mostly WEAK (see Gotchas). |
 
 ### Forecasting
 | File | Role |
@@ -154,7 +156,9 @@ use explicit file names or a manifest).
 `data/cache/`: `oni.parquet`, `enso_phases.parquet`, `commodities.parquet`,
 `sst_anomaly_grids.parquet`, `roni.parquet`, `arima_forecast.parquet`,
 `arima_backtest.parquet`, `lstm_forecast.parquet`, `lstm_backtest.parquet`,
-`forecasts_all.parquet`, `skill_all.parquet`, `monsoon_india.parquet` (NEW 2026-06-28)
+`forecasts_all.parquet`, `skill_all.parquet`, `monsoon_india.parquet`,
+`india_enso_iod.parquet`, `india_regression.parquet`, `india_years.parquet`,
+`exposure_index.parquet`, `landing_ccm.parquet`, `landing_verdicts.parquet` (NEW 2026-06-28/29)
 
 ---
 
@@ -171,30 +175,29 @@ use explicit file names or a manifest).
 - **README** — SEO/AEO/LLMEO optimized, badges, FAQ
 - **Git history** — 5 commits on `master` (latest: `ddd4b0f`)
 
-### Designed (mockups exist) but NOT yet implemented in Panel ❌
-The landing + India work was NOT lost — it lives as HTML mockups in the
-gitignored `.superpowers/brainstorm/` scratch (superpowers Visual Companion).
-Neither is built as a real Panel page yet.
-- **Landing page — "ENSO Macro Risk Desk" — DESIGN LOCKED (v4).**
-  Mockup: `.superpowers/brainstorm/1954-1782430142/landing-risk-desk-v4.html`.
-  Layout: `ENSO<GO>` command bar + function tabs (MAP/FCST/IMPACT/CAUSAL/HIST),
-  scrolling ticker, left rail (Niño-3.4 gauge / ONI sparkline / 12-mo forecast
-  cone), center world **exposure-index choropleth** (clickable countries), right
-  **most-exposed-regions leaderboard**, bottom **causation strip** (6 ONI→commodity
-  cards: verdict badge + Granger/CCM stats + convergence mini-chart; cocoa & wheat
-  deliberately FAIL = the misattribution guard). Clicking a country → region deep-dive.
-- **India deep-dive — research-note layout — DESIGN LOCKED (Option A chosen 2026-06-27).**
-  Mockup: `.superpowers/brainstorm/363-1782522811/region-india-research-note.html`.
-  India "tear-sheet" pinned RIGHT (sticky: flag, India silhouette, at-a-glance KVs,
-  house view); body tabbed **Climate / Agriculture / Economics / History**. Reflowed
-  from the older single-scroll `region-detail-india.html` (same brainstorm dir 1954).
-  Content is illustrative pending wiring to the live engines. **This is the template
-  for ALL region deep-dives — build India first, then clone for other regions.**
-  NOT yet built in Panel — this is the next implementation task.
-- **HF Spaces / Gradio deploy** — deferred by user (June 2026)
-- **EM-DAT disaster bubbles** on the global map — planned overlay
-- **Surrogate significance** for CCM — planned addition
-- **ERA5 CNN** — Phase 3 ML track (needs cdsapi + climpred)
+### Built FOR REAL this session (2026-06-28/29) ✅
+- **India deep-dive — `dashboard/pages/07_india.py`** — BUILT + verified (Plotly figures
+  render). Climate tab = real **ENSO×IOD heatmap + OLS regression**; Economics = live
+  Granger/CCM (sugar); History = computed SON-DMI 1997-vs-2015. Reads caches, not the netCDF.
+- **Region template — `dashboard/region_template.py`** — generic shell (bar / DESK VIEW with
+  CONSTRUCTIVE/WATCH/CAUTIOUS badges / map / KPI rail / live-Granger+CCM Economics / History)
+  + a pluggable per-region Climate exhibit. India + SE Asia both build on it.
+- **SE Asia — `dashboard/pages/08_seasia.py`** — 2nd region (palm oil), honest **WATCH**: its
+  ENSO-phase composite FAILS the El-Niño-premium story (La Niña reads higher = a 1973-74
+  macro-inflation artifact) → a SECOND misattribution example; weak live CCM confirms.
+- **ENSO Exposure Index** (`exposure_index.py` → cache) + **landing causation precompute**
+  (`landing_causation.py` → caches) — the landing's data layer is ready.
+
+### Landing page — "ENSO Macro Risk Desk" v4 — DESIGNED, NOT yet built in Panel ❌
+Mockup: `.superpowers/brainstorm/1954-1782430142/landing-risk-desk-v4.html`. Layout:
+`ENSO<GO>` command bar + tabs, scrolling ticker, left rail (Niño-3.4 gauge via
+`oni_gauge.py` / ONI sparkline / forecast cone from `forecasts_all.parquet`), center world
+**exposure choropleth** (from `exposure_index.parquet`, `go.Choropleth`), right
+**leaderboard** (from same), bottom **causation strip** (from `landing_verdicts.parquet`).
+Country click → region deep-dive (07/08). **OPEN DECISION — see Active Task.**
+- **HF Spaces / Gradio deploy** — deferred. **EM-DAT bubbles** (page 02), **CCM surrogate
+  significance**, **ERA5 CNN** — still planned. Other regions (Brazil/Australia/Peru/cocoa
+  belt) = ~60-line config clones of `08_seasia.py`.
 
 ### Half-done / rough edges
 - `panel serve dashboard/pages/*.py --show` glob may not work on Windows;
@@ -210,71 +213,53 @@ Nothing is broken. All caches are present; all pages load.
 
 ## Active Task
 
-**Building the India deep-dive — now with REAL analytical depth.** The earlier
-"research-note design locked" status was superseded this session (2026-06-28): the user
-reviewed the India mockups and pushed back hard, twice — first that the viz looked
-cheap/too-texty, then that **the analysis itself was shallow ("meh")**. The design
-skeleton (tear-sheet right + 4 tabs) is approved; the *content* needed real depth.
+**Building the LANDING page** ("ENSO Macro Risk Desk" v4) — the front door that ties the
+region deep-dives together. India (07) + SE Asia (08) + the region template + the Exposure
+Index + the landing causation precompute are all DONE and committed. The landing's data
+layer is ready (`exposure_index.parquet`, `landing_verdicts.parquet`, `landing_ccm.parquet`,
+forecasts/oni caches). Product thesis locked: "ENSO Macro Risk Desk" — DESCRIBE → PRESCRIBE
+(see Product Thesis block up top + `memory/product-thesis.md`).
 
-**Product thesis was also locked (2026-06-28):** the "ENSO Macro Risk Desk" — DESCRIBE
-→ PRESCRIBE. See the Product Thesis block up top and `memory/product-thesis.md`.
+**⚠️ OPEN DECISION blocking the landing (user must answer — they left to a new chat):**
+The landing's signature **causation strip** was meant (per the v4 mockup) to show 6
+ONI→commodity cards where "cocoa & wheat deliberately FAIL." But the REAL precomputed
+verdicts (`landing_verdicts.parquet`) don't match the mockup:
+- NONE is strongly CAUSAL (max CCM ρ = 0.32). Palm & Wheat = MODERATE; Cocoa, Robusta,
+  Sugar, Soybeans = WEAK·confounded. So "cocoa & wheat fail" is factually wrong (wheat is
+  one of the *stronger* ones).
+- The honest, on-moat reframe: **"most ENSO→commodity-PRICE trades the market makes don't
+  survive causal testing"** — the clean ENSO signal is on the climate/production side
+  (monsoon, MC drought — which we proved), not noisy monthly prices.
+The user was asked: (A) honest real verdicts + reframed headline [recommended], (B) switch
+the strip to ONI→climate/production links (stronger), or (C) hardcode the mockup verdicts as
+"illustrative" [advised against]. **They deferred and asked for this handoff. Resolve the
+A/B/C decision first, then build the strip accordingly.**
 
-**What we built this session (the depth, computed for real):**
-- `data/ingest/monsoon_fetcher.py` → `monsoon_india.parquet` (all-India JJAS, 1901–2017).
-- `data/process/enso_flavor_iod.py` → the **ENSO × IOD scenario engine**.
-- **Key results (powered, honest):** OLS `monsoon% ~ ENSO + IOD` on n=117 →
-  ENSO −8.2%/°C (p<0.0001), IOD **+4.0%/unit (p=0.042)** — the IOD offset is significant
-  with full power (was p=0.077 on 18 El Niño years). R²=0.36. The ENSO×IOD base-rate
-  grid is cleanly monotone (La Niña ≤0.03 deficient; El Niño 1.00/0.80/**0.50** as IOD
-  goes neg→neu→pos). SON-peak IOD reproduces the 1997-vs-2015 contrast that JJAS-mean
-  blurred. ENSO *flavor* (CP/EP) came out inconclusive after amplitude control → **dropped**
-  (knowing when not to claim = the rigor).
+**Then build `dashboard/pages/00_landing.py`** (or `app.py`): reuse `oni_gauge.build_gauge`
+for the left-rail gauge, Plotly for ONI sparkline + forecast cone (`forecasts_all.parquet`),
+`go.Choropleth` for the exposure map (`exposure_index.parquet`, diverging by `sign`),
+HTML leaderboard, and the causation strip from `landing_verdicts.parquet` + `landing_ccm.parquet`
+mini-curves. Plotly/HTML only — NO pydeck/WebGL (un-verifiable). Country click → 07/08.
 
-**Where we stopped:** ran `/handoff` (this file) at the user's request. **Next: wire the
-real ENSO×IOD grid + regression into the India mockup** (replace the placeholder
-Economics/Climate charts), get final sign-off, THEN build `dashboard/pages/07_india.py`.
-
-**India mockups (newest → oldest), gitignored `.superpowers/brainstorm/`:**
-- `366-1782609244/region-india-view-v3.html` — v3 "prescribe": adds the **DESK VIEW** band
-  (call/conviction/catalyst/risk) + per-tab takeaways. Design approved; analysis was the gap.
-- `366.../region-india-hero-v2.html` — v2: India choropleth hero + real-fidelity charts.
-- `363-1782522811/region-india-research-note.html` — v1 research-note (rejected: too texty).
-- **Servers keep dying on teardown** — restart with
-  `bash .../superpowers/.../skills/brainstorming/scripts/start-server.sh --project-dir <root>`
-  (run_in_background), read new `.server-info` for the port, copy the v3 html into the new dir.
-
-**When building `07_india.py`:** Panel + `dashboard/theme.py` tokens (already match mockups).
-Plotly where an equivalent exists (server-renderable, CI-verifiable); custom HTML/JS only
-where it doesn't; NO pydeck/WebGL. Wire: Climate→ENSO×IOD grid + monsoon composites,
-Economics→`granger_ccm` + the regression, History→`enso_phase_labeler`.
+**Verify Panel pages** by importing the module (runs `build_*()`) + exporting Plotly figs to
+PNG via kaleido — you CANNOT screenshot the live Bokeh server (websocket). Use
+`PYTHONIOENCODING=utf-8` (Windows console chokes on −/ñ).
 
 ---
 
 ## Next Steps (ordered)
 
-0. **Wire the real ENSO×IOD grid + regression into the India mockup** (v3, restart the
-   brainstorm server first) — replace the placeholder Economics/Climate charts; get sign-off.
-1. **Build `07_india.py`** — implement the approved India design (v3 "prescribe": tear-sheet
-   right + DESK VIEW band + tabs Climate/Agriculture/Economics/History), wiring the REAL
-   engines (`enso_flavor_iod` for the ENSO×IOD grid + OLS, `granger_ccm`, `monsoon_india`).
-   Reference mockup: `.superpowers/brainstorm/366-1782609244/region-india-view-v3.html`.
-2. **Generalise into a region template** — refactor `07_india.py` into a
-   parameterised builder so other regions (SE Asia, cocoa belt, Australia, Brazil,
-   Peru, etc.) are cheap to add.
-3. **Implement the landing** ("ENSO Macro Risk Desk", v4 LOCKED) as the Panel entry
-   page — command bar, ticker, left rail (gauge/ONI/forecast cone), center exposure
-   choropleth, right leaderboard, bottom causation strip; country click → deep-dive.
-   Reference mockup: `.superpowers/brainstorm/1954-1782430142/landing-risk-desk-v4.html`.
-4. **Define the ENSO Exposure Index** — the landing's choropleth needs a *computed*
-   per-country score (teleconnection strength × crop dependence × economic exposure).
-   Document the formula; it is a constructed index, label it as such (not observed data).
-5. **Commit** — user has been deferring commits; everything on master is
-   committed but `CLAUDE.md` is untracked and the new pages need commits when done.
-6. **Push to GitHub** — repo has no remote yet. `git remote add origin ...`
-   then push. README assumes a GitHub remote for badges.
-7. **(Optional) HF Spaces deploy** — Gradio wrapper, deferred by user.
-8. **(Optional) EM-DAT bubbles** on page 02.
-9. **(Optional) Surrogate significance** for CCM on page 05.
+1. **Resolve the causation-strip A/B/C decision** (see Active Task) — the real verdicts
+   don't match the mockup. Pick the framing before building the strip.
+2. **Build `dashboard/pages/00_landing.py`** — the v4 desk, reusing the ready caches/engines
+   (gauge, ONI spark, forecast cone, exposure choropleth, leaderboard, causation strip).
+3. **Add more regions** — Brazil/coffee, Australia/wheat, Peru/floods (sign="wet"), cocoa
+   belt — each a ~60-line config clone of `08_seasia.py` on `region_template.py`.
+4. **Wire India's illustrative tabs** — KPI rail + Agriculture crop bars need real crop/CPI
+   ingestion (USDA/FAOSTAT). Climate/Economics/History are already real.
+5. **Push to GitHub** — repo still has no remote. `git remote add origin ...` then push.
+   README assumes a remote for badges. 8 commits on master, working tree clean.
+6. **(Optional)** HF Spaces deploy · EM-DAT bubbles (page 02) · CCM surrogate significance.
 
 ---
 
@@ -300,6 +285,15 @@ Always activate `.venv` (Python 3.12) before running anything.
   computed it, found it inconclusive, and **dropped it** rather than over-claim.
 - **Windows console can't print U+2212 (−) or ñ** under cp1252 → `UnicodeEncodeError`. Use
   ASCII labels in any `print`/`to_string`, or run with `PYTHONIOENCODING=utf-8`.
+
+### ONI→commodity-PRICE causation is genuinely weak — render computed, not asserted (2026-06-29)
+`landing_verdicts.parquet` found NONE of the 6 ONI→price links strongly CAUSAL (max CCM
+ρ=0.32). Granger over-detects (palm sig=13/24) but CCM doesn't confirm. The v4 mockup's
+"palm/robusta CAUSAL, cocoa & wheat FAIL" is ILLUSTRATIVE and factually wrong vs the data
+(wheat is MODERATE, robusta WEAK). **Never hardcode the mockup verdicts** — always show the
+computed one. The honest, on-moat story: the strong clean ENSO signal is on the climate/
+production side (monsoon, MC drought — proven), not noisy monthly prices. This is the
+misattribution guard, just more sweeping than the mockup. (Awaiting the user's A/B/C call.)
 
 ### ONI data source — CPC ASCII, not HDX CSV
 Primary source: `https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt`
