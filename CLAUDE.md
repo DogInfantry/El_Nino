@@ -107,6 +107,7 @@ use explicit file names or a manifest).
 | `dashboard/components/oni_gauge.py` | Plotly gauge for the Niño-3.4 reading |
 | `dashboard/components/timeseries.py` | ONI time series with ENSO event shading + optional RONI secondary |
 | `dashboard/components/globe_layer.py` | ERSSTv5 anomaly Scattergeo map with Niño-3.4 box and teleconnection zones |
+| `dashboard/pages/00_landing.py` | **Landing — ENSO Macro Risk Desk.** The front door. `ENSO<GO>` command bar + ticker, left rail (compact gauge / ONI spark / Ensemble forecast cone), center `go.Choropleth` exposure map (signed by dry/wet), linked leaderboard, and the real-verdict causation strip (Granger+CCM, Option-A honest framing). Plotly/HTML only. |
 | `dashboard/pages/01_enso_monitor.py` | **Page 1 — ENSO Monitor.** Live ONI/RONI stat cards, gauge, time series, advisory badge, CSV export. The visual MVP. |
 | `dashboard/pages/02_global_map.py` | **Page 2 — Global Map.** ERSSTv5 anomaly globe, month slider (landmark peaks + latest), flat/orthographic toggle, teleconnection zones overlay. |
 | `dashboard/pages/03_forecast.py` | **Page 3 — Forecast.** SARIMA/LSTM/Ensemble fan chart with CI bands, external-forecast reference markers, ACC-vs-lead skill chart. |
@@ -188,13 +189,19 @@ use explicit file names or a manifest).
 - **ENSO Exposure Index** (`exposure_index.py` → cache) + **landing causation precompute**
   (`landing_causation.py` → caches) — the landing's data layer is ready.
 
-### Landing page — "ENSO Macro Risk Desk" v4 — DESIGNED, NOT yet built in Panel ❌
-Mockup: `.superpowers/brainstorm/1954-1782430142/landing-risk-desk-v4.html`. Layout:
-`ENSO<GO>` command bar + tabs, scrolling ticker, left rail (Niño-3.4 gauge via
-`oni_gauge.py` / ONI sparkline / forecast cone from `forecasts_all.parquet`), center world
-**exposure choropleth** (from `exposure_index.parquet`, `go.Choropleth`), right
-**leaderboard** (from same), bottom **causation strip** (from `landing_verdicts.parquet`).
-Country click → region deep-dive (07/08). **OPEN DECISION — see Active Task.**
+### Landing page — "ENSO Macro Risk Desk" v4 — BUILT + verified ✅ (2026-06-30)
+`dashboard/pages/00_landing.py` — DONE. Reuses `oni_gauge.build_gauge` (compact) for the
+left-rail gauge; Plotly for the ONI 24-mo sparkline + Ensemble 12-mo forecast cone
+(`forecasts_all.parquet`); `go.Choropleth` exposure map (`exposure_index.parquet`, **signed z
+— dry=coral / wet=blue / mixed=amber**, hover gives the unsigned index + C/E split); HTML
+leaderboard (India & SE Asia rows hyperlink to the live `/07_india` · `/08_seasia` routes);
+and the **causation strip** built from `landing_verdicts.parquet` + `landing_ccm.parquet`
+inline-SVG mini-curves. **Causation-strip decision RESOLVED = Option A** (honest real
+verdicts + reframed headline "most ENSO→commodity-PRICE trades don't survive causal testing";
+NONE strongly causal, palm/wheat MODERATE, rest WEAK·confounded — the mockup's "cocoa & wheat
+FAIL" was illustrative & wrong, never used). Plotly/HTML only, NO WebGL. Verified by importing
+the module (runs `build_app()`) + kaleido PNG export of all 4 Plotly figs. Mockup ref:
+`.superpowers/brainstorm/1954-1782430142/landing-risk-desk-v4.html`.
 - **HF Spaces / Gradio deploy** — deferred. **EM-DAT bubbles** (page 02), **CCM surrogate
   significance**, **ERA5 CNN** — still planned. Other regions (Brazil/Australia/Peru/cocoa
   belt) = ~60-line config clones of `08_seasia.py`.
@@ -213,53 +220,39 @@ Nothing is broken. All caches are present; all pages load.
 
 ## Active Task
 
-**Building the LANDING page** ("ENSO Macro Risk Desk" v4) — the front door that ties the
-region deep-dives together. India (07) + SE Asia (08) + the region template + the Exposure
-Index + the landing causation precompute are all DONE and committed. The landing's data
-layer is ready (`exposure_index.parquet`, `landing_verdicts.parquet`, `landing_ccm.parquet`,
-forecasts/oni caches). Product thesis locked: "ENSO Macro Risk Desk" — DESCRIBE → PRESCRIBE
-(see Product Thesis block up top + `memory/product-thesis.md`).
+**Landing page is BUILT + committed (2026-06-30).** The causation-strip A/B/C decision is
+**RESOLVED = Option A** (honest real verdicts + reframed headline). `00_landing.py` ties the
+whole desk together: gauge + ONI spark + forecast cone (rail), exposure choropleth (center),
+linked leaderboard (right), real-verdict causation strip (bottom). Verified via module import
++ kaleido PNG export. Product thesis locked: "ENSO Macro Risk Desk" — DESCRIBE → PRESCRIBE.
 
-**⚠️ OPEN DECISION blocking the landing (user must answer — they left to a new chat):**
-The landing's signature **causation strip** was meant (per the v4 mockup) to show 6
-ONI→commodity cards where "cocoa & wheat deliberately FAIL." But the REAL precomputed
-verdicts (`landing_verdicts.parquet`) don't match the mockup:
-- NONE is strongly CAUSAL (max CCM ρ = 0.32). Palm & Wheat = MODERATE; Cocoa, Robusta,
-  Sugar, Soybeans = WEAK·confounded. So "cocoa & wheat fail" is factually wrong (wheat is
-  one of the *stronger* ones).
-- The honest, on-moat reframe: **"most ENSO→commodity-PRICE trades the market makes don't
-  survive causal testing"** — the clean ENSO signal is on the climate/production side
-  (monsoon, MC drought — which we proved), not noisy monthly prices.
-The user was asked: (A) honest real verdicts + reframed headline [recommended], (B) switch
-the strip to ONI→climate/production links (stronger), or (C) hardcode the mockup verdicts as
-"illustrative" [advised against]. **They deferred and asked for this handoff. Resolve the
-A/B/C decision first, then build the strip accordingly.**
-
-**Then build `dashboard/pages/00_landing.py`** (or `app.py`): reuse `oni_gauge.build_gauge`
-for the left-rail gauge, Plotly for ONI sparkline + forecast cone (`forecasts_all.parquet`),
-`go.Choropleth` for the exposure map (`exposure_index.parquet`, diverging by `sign`),
-HTML leaderboard, and the causation strip from `landing_verdicts.parquet` + `landing_ccm.parquet`
-mini-curves. Plotly/HTML only — NO pydeck/WebGL (un-verifiable). Country click → 07/08.
+**No open blocker.** Next obvious moves (pick with the user): (1) add more region clones
+(Brazil/coffee, Australia/wheat, Peru/floods sign="wet", cocoa belt) on `region_template.py`;
+(2) optionally wire the choropleth/leaderboard country-click to actually navigate to 07/08
+(currently the leaderboard rows are `<a href="/07_india">` links that work under
+`panel serve`; the Plotly map itself is hover-only — a Panel click callback could route it);
+(3) build a single `app.py` entry point / multi-page nav so the 7 pages serve as one site;
+(4) push to GitHub (still no remote).
 
 **Verify Panel pages** by importing the module (runs `build_*()`) + exporting Plotly figs to
 PNG via kaleido — you CANNOT screenshot the live Bokeh server (websocket). Use
-`PYTHONIOENCODING=utf-8` (Windows console chokes on −/ñ).
+`PYTHONIOENCODING=utf-8` (Windows console chokes on −/ñ). The kaleido Timestamp gotcha bit
+the landing too: a single-point marker trace must pass a Series slice (`x.iloc[[-1]]`), NOT a
+list-wrapped scalar (`[x.iloc[-1]]`) — the latter is un-serializable under kaleido.
 
 ---
 
 ## Next Steps (ordered)
 
-1. **Resolve the causation-strip A/B/C decision** (see Active Task) — the real verdicts
-   don't match the mockup. Pick the framing before building the strip.
-2. **Build `dashboard/pages/00_landing.py`** — the v4 desk, reusing the ready caches/engines
-   (gauge, ONI spark, forecast cone, exposure choropleth, leaderboard, causation strip).
-3. **Add more regions** — Brazil/coffee, Australia/wheat, Peru/floods (sign="wet"), cocoa
+1. **Add more regions** — Brazil/coffee, Australia/wheat, Peru/floods (sign="wet"), cocoa
    belt — each a ~60-line config clone of `08_seasia.py` on `region_template.py`.
-4. **Wire India's illustrative tabs** — KPI rail + Agriculture crop bars need real crop/CPI
+2. **Single entry point / nav** — `app.py` or a header nav so the 7 pages serve as one site;
+   optionally make the landing choropleth click route to 07/08 (leaderboard rows already do).
+3. **Wire India's illustrative tabs** — KPI rail + Agriculture crop bars need real crop/CPI
    ingestion (USDA/FAOSTAT). Climate/Economics/History are already real.
-5. **Push to GitHub** — repo still has no remote. `git remote add origin ...` then push.
-   README assumes a remote for badges. 8 commits on master, working tree clean.
-6. **(Optional)** HF Spaces deploy · EM-DAT bubbles (page 02) · CCM surrogate significance.
+4. **Push to GitHub** — repo still has no remote. `git remote add origin ...` then push.
+   README assumes a remote for badges.
+5. **(Optional)** HF Spaces deploy · EM-DAT bubbles (page 02) · CCM surrogate significance.
 
 ---
 
