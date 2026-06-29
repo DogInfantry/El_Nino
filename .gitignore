@@ -16,6 +16,9 @@ env/
 # Claude Code local settings (keep launch.json, ignore machine-local prefs)
 .claude/settings.local.json
 
+# Superpowers brainstorming mockups (local design scratch space)
+.superpowers/
+
 # OS / editor
 .DS_Store
 Thumbs.db
