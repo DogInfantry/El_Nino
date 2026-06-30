@@ -1,0 +1,85 @@
+# Auto-deploy this repo to its Hugging Face Space on every push to master.
+#
+# SCOPE: this workflow lives in THIS repo only and runs only for THIS repo. It
+# does not change anything globally or affect any other repository. The HF token
+# is read from a repo secret (Settings -> Secrets and variables -> Actions ->
+# HF_TOKEN), never hard-coded.
+#
+# Using the `environment:` key makes each run show up under the repo's
+# Deployments tab (with the live Space URL).
+
+name: Deploy to Hugging Face Space
+
+on:
+  push:
+    branches: [master]
+    # Only redeploy when something the Space actually serves changes.
+    paths:
+      - "dashboard/**"
+      - "data/cache/**"
+      - "data/process/**"
+      - "data/ingest/**"
+      - "app.py"
+      - "Dockerfile"
+      - "requirements-space.txt"
+      - "deploy/hf/README.md"
+      - ".github/workflows/deploy-hf.yml"
+  workflow_dispatch: {}   # allow manual "Run workflow" from the Actions tab
+
+concurrency:
+  group: deploy-hf
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: huggingface
+      url: https://huggingface.co/spaces/DogInfantry/enso-macro-risk-desk
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install huggingface_hub
+        run: pip install --upgrade "huggingface_hub>=0.25"
+
+      - name: Sync code, caches and config to the Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          REPO = "DogInfantry/enso-macro-risk-desk"
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          ignore = ["**/__pycache__/**", "*.pyc"]
+
+          # Folders the served pages import + the parquet caches they read.
+          for folder, dest, ig in [
+              ("dashboard", "dashboard", ignore),
+              ("data/cache", "data/cache", None),
+              ("data/process", "data/process", ignore),
+              ("data/ingest", "data/ingest", ignore),
+          ]:
+              api.upload_folder(repo_id=REPO, repo_type="space",
+                                folder_path=folder, path_in_repo=dest,
+                                ignore_patterns=ig,
+                                commit_message=f"CI: sync {dest}")
+
+          # Entry point + deploy config.
+          for f in ("app.py", "Dockerfile", "requirements-space.txt"):
+              api.upload_file(repo_id=REPO, repo_type="space",
+                              path_or_fileobj=f, path_in_repo=f,
+                              commit_message=f"CI: sync {f}")
+
+          # HF-frontmatter README (kept out of the repo root on purpose).
+          api.upload_file(repo_id=REPO, repo_type="space",
+                          path_or_fileobj="deploy/hf/README.md",
+                          path_in_repo="README.md",
+                          commit_message="CI: sync README")
+          print("Space synced.")
+          PY
