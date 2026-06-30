@@ -1,0 +1,17 @@
+# Hugging Face Space (Docker) — LIVE-SERVER deps only.
+# This is a lean subset of requirements.txt: just what the served Panel pages
+# import at runtime. The offline pipeline (torch/xarray/netcdf4/kaleido/
+# vl-convert) is deliberately excluded — the dashboard only READS the parquet
+# caches, it never re-fetches or re-trains at serve time. Keeps the image small
+# and the free-tier build fast.
+pandas==3.0.3
+numpy==2.5.0
+pyarrow==24.0.0          # parquet engine (reads data/cache/*.parquet)
+requests==2.34.2         # live NOAA advisory fetch (degrades gracefully)
+pypdf==6.14.2            # parse the live ENSO advisory PDF
+panel==1.9.3             # dashboard server
+bokeh==3.9.1             # Panel rendering backend
+plotly==6.8.0            # gauge / time series / map / fan chart
+altair==6.2.2            # sector-impact Vega heatmap (page 04)
+scipy==1.18.0            # CCM nearest-neighbour (page 05 / region Economics)
+statsmodels==0.14.6      # Granger causality (page 05 / region Economics)

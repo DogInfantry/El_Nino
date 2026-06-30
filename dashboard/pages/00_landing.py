@@ -71,6 +71,9 @@ RAW_CSS = f"""
 .cmd .go {{ color:{COLORS['teal']}; font-weight:800; letter-spacing:.5px; }}
 .cmd .fn {{ color:#aeb8cc; background:#141c30; border:1px solid {_LINE}; padding:5px 9px; border-radius:5px; }}
 .cmd .fn.on {{ color:#070b14; background:{COLORS['teal']}; border-color:{COLORS['teal']}; }}
+.cmd a.fn {{ text-decoration:none; cursor:pointer; transition:.15s; }}
+.cmd a.fn:hover {{ border-color:{COLORS['teal']}; color:{COLORS['text']}; }}
+.cmd a.fn.on:hover {{ color:#070b14; }}
 .cmd .live {{ margin-left:auto; color:{COLORS['el_nino']}; }}
 .cmd .live::before {{ content:'\\25cf'; margin-right:5px; animation:bl 1.4s infinite; }}
 @keyframes bl {{ 50%{{opacity:.3}} }}
@@ -224,11 +227,15 @@ def build_leaderboard(exp: pd.DataFrame) -> str:
         col = sign_color.get(r["sign"], COLORS["neutral"])
         label = f"{r['name']} · {r['commodity'].split(',')[0]}"
         dd = DEEP_DIVES.get(r["iso3"])
-        href = f"href='/{dd[0]}' title='Open {dd[1]}'" if dd else "title='deep-dive pending'"
-        tag = "<span class='link'>OPEN ↗</span>" if dd else ""
-        cursor = "cursor:pointer;" if dd else "cursor:default;"
+        if dd:
+            href = f"href='/{dd[0]}' title='Open {dd[1]}'"
+            tag = "<span class='link'>OPEN ↗</span>"
+        else:
+            href = ("href='/04_sector_impact' "
+                    "title='Explore this commodity in Sector Impact'")
+            tag = "<span class='link' style='color:#7e8aa3'>impact ↗</span>"
         rows.append(
-            f"<a class='lrow' style='{cursor}' {href}>"
+            f"<a class='lrow' style='cursor:pointer;' {href}>"
             f"<span class='rk'>{i + 1}</span>"
             f"<div><div class='ln'><span class='dot' style='background:{col}'></span>"
             f"{label}{tag}</div>"
@@ -317,12 +324,18 @@ def build_app() -> pn.viewable.Viewable:
         "El Niño-ish" if latest_oni >= 0.5 else
         "La Niña-ish" if latest_oni <= -0.5 else "ENSO-Neutral")
 
-    # --- command bar + ticker ---
+    # --- command bar + ticker (chips are REAL links to every page) ---
+    nav = [("DESK", "/", True), ("MONITOR", "/01_enso_monitor", False),
+           ("MAP", "/02_global_map", False), ("FCST", "/03_forecast", False),
+           ("IMPACT", "/04_sector_impact", False), ("CAUSAL", "/05_causation", False),
+           ("HIST", "/06_historical", False), ("INDIA", "/07_india", False),
+           ("SEASIA", "/08_seasia", False)]
+    chips = "".join(
+        f"<a class='fn{' on' if on else ''}' href='{href}'>{label}</a>"
+        for label, href, on in nav)
     cmd = pn.pane.HTML(
-        "<div class='cmd'><span class='go'>ENSO&lt;GO&gt;</span>"
-        "<span class='fn on'>DESK</span><span class='fn'>MAP</span>"
-        "<span class='fn'>FCST</span><span class='fn'>CAUSAL</span><span class='fn'>HIST</span>"
-        f"<span class='live'>LIVE · NOAA CPC · {status} · as of {asof}</span></div>",
+        "<div class='cmd'><span class='go'>ENSO&lt;GO&gt;</span>" + chips
+        + f"<span class='live'>LIVE · NOAA CPC · {status} · as of {asof}</span></div>",
         margin=0)
     ticker = pn.pane.HTML(_ticker(latest_oni, exp, fc), margin=0)
 
@@ -346,7 +359,8 @@ def build_app() -> pn.viewable.Viewable:
         pn.pane.HTML("<div class='h' style='padding:8px 8px 0'>ENSO "
                      f"<span style='color:{COLORS['teal']}'>EXPOSURE INDEX</span> · by country "
                      "<span style='color:#5b6577;font-weight:400;text-transform:none;"
-                     "letter-spacing:0'>— coral = dry-impact · blue = wet-impact</span></div>",
+                     "letter-spacing:0'>— coral = dry-impact · blue = wet-impact · "
+                     "hover for detail; use the leaderboard → or nav bar to drill in</span></div>",
                      margin=0),
         pn.pane.Plotly(build_exposure_map(exp), config=_PLOTLY_CFG, margin=0),
         css_classes=["mapwrap"], margin=0)
