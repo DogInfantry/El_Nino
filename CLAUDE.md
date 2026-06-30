@@ -232,7 +232,7 @@ linked leaderboard (right), real-verdict causation strip (bottom). Verified via 
 (currently the leaderboard rows are `<a href="/07_india">` links that work under
 `panel serve`; the Plotly map itself is hover-only — a Panel click callback could route it);
 (3) build a single `app.py` entry point / multi-page nav so the 7 pages serve as one site;
-(4) push to GitHub (still no remote).
+(4) keep pushing to GitHub (origin already set).
 
 **Verify Panel pages** by importing the module (runs `build_*()`) + exporting Plotly figs to
 PNG via kaleido — you CANNOT screenshot the live Bokeh server (websocket). Use
@@ -250,8 +250,8 @@ list-wrapped scalar (`[x.iloc[-1]]`) — the latter is un-serializable under kal
    optionally make the landing choropleth click route to 07/08 (leaderboard rows already do).
 3. **Wire India's illustrative tabs** — KPI rail + Agriculture crop bars need real crop/CPI
    ingestion (USDA/FAOSTAT). Climate/Economics/History are already real.
-4. **Push to GitHub** — repo still has no remote. `git remote add origin ...` then push.
-   README assumes a remote for badges.
+4. **Keep pushing to GitHub** — remote IS configured: `origin` →
+   `https://github.com/DogInfantry/El_Nino.git`. Just `git push` as milestones land.
 5. **(Optional)** HF Spaces deploy · EM-DAT bubbles (page 02) · CCM surrogate significance.
 
 ---
@@ -359,7 +359,9 @@ predictability barrier. The fan chart shows the uncertainty bands; the model
 spread vs CPC dynamical models is the real signal.
 
 ### Git state
-5 commits on `master`. No remote configured (user deferred push).
+Single-branch workflow on `master`. Remote IS configured:
+`origin` → `https://github.com/DogInfantry/El_Nino.git` (pushed through `5dcbd9f`).
+`gh` is authed as `DogInfantry`. Just `git push origin master` as milestones land.
 `.gitignore` excludes `.claude/settings.local.json` but tracks
 `.claude/launch.json`. Data caches (`data/cache/*.parquet`) are intentionally
 tracked — they're small and let the dashboard run without re-fetching.
