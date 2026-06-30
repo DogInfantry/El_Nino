@@ -301,6 +301,17 @@ free of HF YAML frontmatter; the Space's README.md is a separate HF-frontmatter 
 - To redeploy after a code change: re-`hf upload` the changed file(s); README/Dockerfile/
   requirements changes trigger a full rebuild, pure-code changes hot-reload.
 
+**CI/CD (auto-deploy) — LIVE 2026-06-30:** `.github/workflows/deploy-hf.yml` syncs to the
+Space on every push to `master` (path-filtered to app/cache/config changes) via
+`huggingface_hub.upload_folder/upload_file` — so **push to GitHub = Space redeploys itself**,
+no manual `hf upload` needed. The job uses `environment: huggingface` so each run shows under
+the repo's **GitHub Deployments** tab (the HF deploy was previously invisible to GitHub
+because `hf upload` doesn't touch GitHub's Deployments API). Token = repo secret `HF_TOKEN`
+(set via `gh secret set HF_TOKEN --repo DogInfantry/El_Nino`). The HF-frontmatter README is
+versioned at `deploy/hf/README.md` (uploaded as the Space's `README.md`) to keep the root
+README clean. Scoped to THIS repo only. **If the HF token is rotated, update the secret** with
+`gh secret set HF_TOKEN` or CI deploys will start failing on auth.
+
 ---
 
 ## Gotchas
