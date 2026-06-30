@@ -378,12 +378,19 @@ for the pattern: `pd.DataFrame({"date": [last_date], ...})` where `last_date`
 is a Timestamp — this works because kaleido serializes the DataFrame column,
 not the scalar.
 
-### Can't screenshot live Panel/Bokeh apps
-The Panel dev server uses a persistent WebSocket → the browser never hits
-`networkidle` → screenshot tools time out. To verify visuals:
-- Export Plotly charts via kaleido → PNG
-- Export Altair charts via vl-convert → PNG
-- Do NOT try `playwright` / `selenium` against the live server in CI
+### Screenshotting live Panel/Bokeh apps — use a FIXED wait, not networkidle
+The Panel dev server holds a persistent WebSocket → the browser never hits
+`networkidle` → tools that wait on it time out. But you CAN screenshot the live
+app (done 2026-06-30 for the README): Playwright with `wait_until="load"` +
+`page.wait_for_timeout(8500)` (fixed beat to let the ws render Plotly/Bokeh),
+`device_scale_factor=2`, dark `color_scheme`. Serve via `python app.py` on 5006,
+shoot each route, then auto-crop dark margins with PIL (`bbox` of pixels deviating
+from the corner background) and downscale to ~1600px. The generator scripts are in
+the session scratchpad; outputs live in `assets/` (`hero.svg` + 5 page PNGs, used
+by the README). The earlier "don't try playwright" advice was wrong — only
+`networkidle` fails. For headless *chart* checks (CI), kaleido/vl-convert PNG
+export is still the lighter path. **`assets/hero.svg`** is generated from the real
+ONI record by a script (coral El Nino / blue La Nina backdrop) — static SVG, GitHub-safe.
 
 ### Map: Plotly Scattergeo, NOT pydeck
 pydeck uses WebGL (deck.gl). WebGL can't be verified by headless screenshot
