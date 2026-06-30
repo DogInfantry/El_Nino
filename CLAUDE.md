@@ -148,6 +148,9 @@ use explicit file names or a manifest).
 | File | Role |
 |------|------|
 | `tests/test_core.py` | Unit tests for pure logic: phase labeling, detrend, lag correlation, CCM, skill metrics. No network required. Run: `python tests/test_core.py` |
+| `app.py` | **Single entry point (NEW 2026-06-30).** Serves the landing at `/` + the 8 pages at route slugs; per-session exec captures each page's `.servable()`. Used by the HF Space and for local `python app.py`. |
+| `Dockerfile` | **HF Space (Docker SDK) (NEW).** python:3.12-slim, non-root, `CMD python app.py` on 7860. |
+| `requirements-space.txt` | **Serve-only deps (NEW).** Lean subset of `requirements.txt` (no torch/xarray/kaleido) for the deployed image. |
 | `requirements.txt` | Full pinned dependency list (Python 3.12) |
 | `.gitignore` | Excludes `.venv/`, `data/raw/`, `.env`, `.cdsapirc`, `*.nc`, `_*.png`, `_*.html`, `.superpowers/` |
 | `.env.example` | Template for ERA5/CDS credentials (Phase 2 optional) |
@@ -202,9 +205,14 @@ NONE strongly causal, palm/wheat MODERATE, rest WEAK·confounded — the mockup'
 FAIL" was illustrative & wrong, never used). Plotly/HTML only, NO WebGL. Verified by importing
 the module (runs `build_app()`) + kaleido PNG export of all 4 Plotly figs. Mockup ref:
 `.superpowers/brainstorm/1954-1782430142/landing-risk-desk-v4.html`.
-- **HF Spaces / Gradio deploy** — deferred. **EM-DAT bubbles** (page 02), **CCM surrogate
-  significance**, **ERA5 CNN** — still planned. Other regions (Brazil/Australia/Peru/cocoa
-  belt) = ~60-line config clones of `08_seasia.py`.
+- **DEPLOYED to Hugging Face Spaces** ✅ (2026-06-30) — LIVE at
+  `https://huggingface.co/spaces/DogInfantry/enso-macro-risk-desk` (app host
+  `doginfantry-enso-macro-risk-desk.hf.space`). Docker SDK, free `cpu-basic`. Served by
+  `app.py` (landing at `/`, 8 pages at route slugs) via `Dockerfile` +
+  `requirements-space.txt` (serve-only deps, no torch/xarray). See the **Deployment** block
+  below. **EM-DAT bubbles** (page 02), **CCM surrogate significance**, **ERA5 CNN** — still
+  planned. Other regions (Brazil/Australia/Peru/cocoa belt) = ~60-line config clones of
+  `08_seasia.py`.
 
 ### Half-done / rough edges
 - `panel serve dashboard/pages/*.py --show` glob may not work on Windows;
@@ -252,7 +260,46 @@ list-wrapped scalar (`[x.iloc[-1]]`) — the latter is un-serializable under kal
    ingestion (USDA/FAOSTAT). Climate/Economics/History are already real.
 4. **Keep pushing to GitHub** — remote IS configured: `origin` →
    `https://github.com/DogInfantry/El_Nino.git`. Just `git push` as milestones land.
-5. **(Optional)** HF Spaces deploy · EM-DAT bubbles (page 02) · CCM surrogate significance.
+5. **(Optional)** EM-DAT bubbles (page 02) · CCM surrogate significance · custom HF domain.
+
+---
+
+## Deployment (HF Spaces — LIVE 2026-06-30)
+
+**Live:** https://huggingface.co/spaces/DogInfantry/enso-macro-risk-desk
+(app host `doginfantry-enso-macro-risk-desk.hf.space`). Docker SDK, free `cpu-basic`
+(sleeps after inactivity → ~20-30s cold start; no cost).
+
+**Why Docker, not Gradio/Static:** Panel/Bokeh is a long-running WebSocket server — it
+can't run as a serverless/static app (this is also why it can't deploy to Vercel without
+WASM-converting). Docker Space runs real `panel serve` in a container on port 7860.
+
+**How it's wired:**
+- `app.py` — single entry point. Serves the landing at `/` and the 8 other pages at their
+  route slugs (`07_india`, ...). Per-session it execs each page file and captures whatever
+  it marks `.servable()` (uniform across `build_app` pages AND the `build_region` ones).
+  Reads `PORT` + `WS_ORIGIN` from env.
+- `Dockerfile` — python:3.12-slim, non-root user 1000, `pip install --user
+  requirements-space.txt`, `COPY . .`, `ENV PORT=7860 WS_ORIGIN=<space host>`, `CMD python app.py`.
+- `requirements-space.txt` — serve-only deps (panel/bokeh/plotly/altair/pandas/numpy/scipy/
+  statsmodels/pyarrow/requests/pypdf). **No torch/xarray/netcdf4/kaleido** — the dashboard
+  only READS the parquet caches; the offline pipeline isn't run at serve time. Keeps the
+  image small + build fast (all wheels, no compile).
+
+**Auth + push:** `hf` CLI (in `.venv/Scripts/`) authed as DogInfantry (write token; the HF
+*MCP* server's auth does NOT cover the CLI). Files pushed via `hf upload <repo> <local>
+<path> --repo-type space` (the git repo is NOT mirrored to HF — keeps the GitHub README
+free of HF YAML frontmatter; the Space's README.md is a separate HF-frontmatter file).
+
+**Gotchas hit:**
+- `hf upload --exclude "**/..."` → Git Bash expands the glob before `hf` sees it → "unexpected
+  extra arguments". Just omit `--exclude` (`__pycache__` in the image is harmless).
+- `hf spaces logs` printing to the Windows console → `'charmap' codec can't encode` abort.
+  Run with `PYTHONIOENCODING=utf-8`.
+- Verify with `HfApi().get_space_runtime(...).stage` + curl each route for HTTP 200 (a page
+  that errors on build returns 500). `RUNNING` alone isn't proof.
+- To redeploy after a code change: re-`hf upload` the changed file(s); README/Dockerfile/
+  requirements changes trigger a full rebuild, pure-code changes hot-reload.
 
 ---
 
