@@ -343,7 +343,14 @@ README clean. Scoped to THIS repo only. **If the HF token is rotated, update the
   `gh auth refresh -h github.com -s workflow`, then `git add .github/workflows/keepalive.yml
   && git commit && git push`.
 - Local preview of the front-door: launch config `frontdoor` in `.claude/launch.json`
-  (`python -m http.server 8123 -d web`).
+  (`python -m http.server 8123 -d web/out` — run `cd web && npm run build` first).
+
+**Monthly data refresh (NEW 2026-07-10):** `python scripts/refresh_data.py` (add `--no-lstm`
+to skip the slow retrain) → review `git diff data/cache` → commit + push → HF Space redeploys
+itself. The script only chains the existing module `__main__`s in dependency order and prints
+a before/after cache-freshness table. Run shortly after the ~5th (CPC posts the new ONI then).
+Advisory is live-fetched at page load (never stale); Pink Sheet snapshot still ends 2024-12;
+monsoon data is a static 1901–2017 dataset; the Vercel front-door is static (no data).
 
 ---
 

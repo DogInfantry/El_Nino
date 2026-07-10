@@ -192,9 +192,9 @@ panel serve dashboard/pages/00_landing.py --show
 
 ## ☁️ Deployment
 
-**Live now:** **[huggingface.co/spaces/DogInfantry/enso-macro-risk-desk](https://huggingface.co/spaces/DogInfantry/enso-macro-risk-desk)** — Docker SDK, free CPU Basic.
+**Live now:** **[el-nino-green.vercel.app](https://el-nino-green.vercel.app/)** (Next.js front-door on Vercel — prewarms the app host on visit) → **[huggingface.co/spaces/DogInfantry/enso-macro-risk-desk](https://huggingface.co/spaces/DogInfantry/enso-macro-risk-desk)** (the app — Docker SDK, free CPU Basic).
 
-Panel/Bokeh is a long-running WebSocket server, so it ships as a **Docker Space** (not Gradio/Static, and not Vercel without WASM conversion) running real `panel serve` via [`app.py`](app.py). A **GitHub Action** ([`.github/workflows/deploy-hf.yml`](.github/workflows/deploy-hf.yml)) auto-syncs the Space on every push to `master` — **push to GitHub → the Space redeploys itself**, and each run is recorded under the repo's **Deployments** tab. The serve-only dependency set ([`requirements-space.txt`](requirements-space.txt)) excludes torch/xarray/kaleido, keeping the image small.
+Panel/Bokeh is a long-running WebSocket server, so the app ships as a **Docker Space** (not Gradio/Static, and not Vercel without WASM conversion) running real `panel serve` via [`app.py`](app.py). The [`web/`](web/) directory is a static-exported **Next.js 15** landing page deployed on Vercel; it deep-links into the Space and polls the HF runtime API for live status. Data caches are refreshed monthly with one command: `python scripts/refresh_data.py`. A **GitHub Action** ([`.github/workflows/deploy-hf.yml`](.github/workflows/deploy-hf.yml)) auto-syncs the Space on every push to `master` — **push to GitHub → the Space redeploys itself**, and each run is recorded under the repo's **Deployments** tab. The serve-only dependency set ([`requirements-space.txt`](requirements-space.txt)) excludes torch/xarray/kaleido, keeping the image small.
 
 ---
 
