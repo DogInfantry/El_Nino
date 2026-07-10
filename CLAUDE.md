@@ -222,7 +222,14 @@ the module (runs `build_app()`) + kaleido PNG export of all 4 Plotly figs. Mocku
   minor doc inconsistency (the behavior is correct; the docstring is stale)
 
 ### Broken ❌
-Nothing is broken. All caches are present; all pages load.
+- **The HF Space is in `RUNTIME_ERROR`** (found 2026-07-10): runtime API reports
+  "Launch timed out, workload was not healthy after 30 min"; app host returns 503.
+  Codebase is fine (local pages load). Fix = restart the Space — `hf spaces restart`
+  or `HfApi().restart_space('DogInfantry/enso-macro-risk-desk')` or the Space
+  settings page. Claude's restart attempt was permission-blocked; the OWNER must do it.
+  If restart hits the 30-min health timeout again, check build/run logs
+  (`PYTHONIOENCODING=utf-8 hf spaces logs ...`) — could be a slow cold pull, not code.
+Everything local is fine: all caches present; all pages load.
 
 ---
 
@@ -311,6 +318,24 @@ because `hf upload` doesn't touch GitHub's Deployments API). Token = repo secret
 versioned at `deploy/hf/README.md` (uploaded as the Space's `README.md`) to keep the root
 README clean. Scoped to THIS repo only. **If the HF token is rotated, update the secret** with
 `gh secret set HF_TOKEN` or CI deploys will start failing on auth.
+
+**Vercel front-door + keep-alive (NEW 2026-07-10):** Vercel CANNOT host the app itself
+(Panel/Bokeh = long-running WebSocket server; Vercel is serverless). Instead:
+- `web/index.html` — static front-door (dark terminal aesthetic, theme.py palette hardcoded):
+  hero + LAUNCH DESK CTA + page-thumbnail deep links into the HF routes. A hidden iframe GET
+  of the app host **prewarms** a sleeping Space on page load; the status pill polls
+  `https://huggingface.co/api/spaces/DogInfantry/enso-macro-risk-desk/runtime` (CORS-enabled)
+  and maps stage → LIVE / WARMING… / OFFLINE. **Do NOT drive the pill off the iframe `load`
+  event — cross-origin `load` fires even on a 503 error page** (bit us: it showed LIVE while
+  the Space was in RUNTIME_ERROR).
+- Vercel wiring (one-time, dashboard): import `DogInfantry/El_Nino`, Root Directory=`web`,
+  Framework=Other, no build. Pushes touching `web/` auto-redeploy. `web/assets/` is a copy of
+  `assets/` (Vercel root must contain them).
+- `.github/workflows/keepalive.yml` — cron ping of the app host every 6h; non-200 fails the
+  job (uptime monitoring). Keeps the free Space from sleeping (runtime API gcTimeout=48h).
+  GitHub disables cron workflows after ~60 days of repo inactivity; any push re-enables.
+- Local preview of the front-door: launch config `frontdoor` in `.claude/launch.json`
+  (`python -m http.server 8123 -d web`).
 
 ---
 

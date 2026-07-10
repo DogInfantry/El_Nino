@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ENSO Macro Risk Desk</title>
+<meta name="description" content="ENSO Macro Risk Desk — when the ENSO cycle shifts, which commodity &amp; sector exposures to reposition, and which links are causally real vs. spurious.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#127786;</text></svg>">
+<style>
+  :root{
+    --bg:#0a0e1a; --surface:#141929; --el-nino:#f4623a; --la-nina:#3a9af4;
+    --neutral:#8a94a6; --teal:#00d4b4; --text:#e8edf5; --muted:#5b6577;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"IBM Plex Mono","Cascadia Code",Consolas,Menlo,monospace;
+    line-height:1.55; -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--teal); text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1080px; margin:0 auto; padding:0 24px}
+
+  /* top bar */
+  .topbar{
+    display:flex; align-items:center; gap:14px; padding:14px 0;
+    border-bottom:1px solid #1e2436; font-size:13px;
+  }
+  .cmd{color:var(--el-nino); font-weight:700; letter-spacing:.5px}
+  .cmd .go{color:var(--teal)}
+  .topbar .spacer{flex:1}
+  .pill{
+    display:inline-flex; align-items:center; gap:7px;
+    padding:3px 12px; border-radius:999px; font-size:12px;
+    border:1px solid var(--muted); color:var(--neutral);
+    transition:all .4s;
+  }
+  .pill .dot{width:8px;height:8px;border-radius:50%;background:var(--neutral);animation:blink 1.2s infinite}
+  .pill.live{border-color:var(--teal); color:var(--teal)}
+  .pill.live .dot{background:var(--teal); animation:none}
+  @keyframes blink{50%{opacity:.25}}
+
+  /* hero */
+  .hero{
+    position:relative; padding:64px 0 40px; overflow:hidden;
+  }
+  .hero .backdrop{
+    position:absolute; inset:0; opacity:.35; pointer-events:none;
+    background:url("assets/hero.svg") center/cover no-repeat;
+    mask-image:linear-gradient(to bottom, rgba(0,0,0,.9), transparent);
+    -webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,.9), transparent);
+  }
+  .hero h1{font-size:clamp(26px,4.5vw,44px); letter-spacing:.5px; position:relative}
+  .hero h1 .accent{color:var(--el-nino)}
+  .hero p.thesis{
+    position:relative; margin-top:14px; max-width:640px; color:var(--neutral); font-size:15px;
+  }
+  .cta-row{position:relative; margin-top:28px; display:flex; gap:14px; flex-wrap:wrap; align-items:center}
+  .btn{
+    display:inline-block; padding:13px 26px; font:inherit; font-weight:700; font-size:14px;
+    letter-spacing:1px; border-radius:4px; cursor:pointer;
+  }
+  .btn-primary{
+    background:var(--el-nino); color:#0a0e1a; border:1px solid var(--el-nino);
+  }
+  .btn-primary:hover{filter:brightness(1.12); text-decoration:none}
+  .btn-ghost{
+    background:transparent; color:var(--text); border:1px solid var(--muted);
+  }
+  .btn-ghost:hover{border-color:var(--teal); color:var(--teal); text-decoration:none}
+  .coldstart{font-size:12px; color:var(--muted)}
+
+  /* main screenshot */
+  .shot{
+    display:block; margin:36px 0 0; border:1px solid #1e2436; border-radius:8px;
+    overflow:hidden; box-shadow:0 24px 60px rgba(0,0,0,.55);
+  }
+  .shot img{width:100%; display:block}
+
+  /* thumbnails */
+  h2.section{
+    margin:56px 0 6px; font-size:13px; letter-spacing:2px; color:var(--muted);
+    text-transform:uppercase;
+  }
+  h2.section::before{content:"// "; color:var(--el-nino)}
+  .grid{
+    display:grid; gap:18px; margin-top:18px;
+    grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));
+  }
+  .card{
+    background:var(--surface); border:1px solid #1e2436; border-radius:8px;
+    overflow:hidden; transition:border-color .2s, transform .2s;
+  }
+  .card:hover{border-color:var(--teal); transform:translateY(-3px); text-decoration:none}
+  .card img{width:100%; display:block; aspect-ratio:16/10; object-fit:cover; object-position:top}
+  .card .label{padding:12px 14px; font-size:13px}
+  .card .label b{display:block; color:var(--text)}
+  .card .label span{color:var(--muted); font-size:12px}
+
+  footer{
+    margin-top:64px; padding:26px 0 40px; border-top:1px solid #1e2436;
+    font-size:12px; color:var(--muted); display:flex; gap:20px; flex-wrap:wrap;
+  }
+  #prewarm{position:absolute; width:1px; height:1px; opacity:0; border:0; pointer-events:none}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="topbar">
+    <span class="cmd">ENSO<span class="go">&lt;GO&gt;</span></span>
+    <span style="color:var(--muted)">Macro Risk Desk</span>
+    <span class="spacer"></span>
+    <span id="status" class="pill"><span class="dot"></span><span id="status-text">WARMING&hellip;</span></span>
+  </div>
+
+  <section class="hero">
+    <div class="backdrop"></div>
+    <h1>ENSO <span class="accent">Macro Risk Desk</span></h1>
+    <p class="thesis">When the ENSO cycle shifts: which commodity &amp; sector exposures to
+    reposition &mdash; and which ENSO&rarr;price links are causally real vs. spurious.
+    ONI/RONI monitoring &middot; SARIMA+LSTM forecasts &middot; Granger + CCM causal testing.</p>
+    <div class="cta-row">
+      <a id="launch" class="btn btn-primary" href="https://doginfantry-enso-macro-risk-desk.hf.space/">LAUNCH DESK &rarr;</a>
+      <a class="btn btn-ghost" href="https://github.com/DogInfantry/El_Nino">SOURCE ON GITHUB</a>
+      <span class="coldstart" id="coldstart-note">free-tier host &mdash; warming it up for you now&hellip;</span>
+    </div>
+    <a class="shot" href="https://doginfantry-enso-macro-risk-desk.hf.space/" aria-label="Open the live desk">
+      <img src="assets/desk-landing.png" alt="ENSO Macro Risk Desk — landing: ONI gauge, forecast cone, exposure choropleth, causation strip" loading="eager">
+    </a>
+  </section>
+
+  <h2 class="section">Desk pages</h2>
+  <div class="grid">
+    <a class="card" href="https://doginfantry-enso-macro-risk-desk.hf.space/03_forecast">
+      <img src="assets/forecast.png" alt="Forecast fan chart" loading="lazy">
+      <div class="label"><b>Forecast</b><span>SARIMA / LSTM / ensemble cone + skill-by-lead</span></div>
+    </a>
+    <a class="card" href="https://doginfantry-enso-macro-risk-desk.hf.space/02_global_map">
+      <img src="assets/global-map.png" alt="Global SST anomaly map" loading="lazy">
+      <div class="label"><b>Global Map</b><span>ERSSTv5 anomalies, Ni&ntilde;o-3.4 box, teleconnections</span></div>
+    </a>
+    <a class="card" href="https://doginfantry-enso-macro-risk-desk.hf.space/05_causation">
+      <img src="assets/causation.png" alt="Causation explorer" loading="lazy">
+      <div class="label"><b>Causation Explorer</b><span>Granger + CCM &mdash; the misattribution guard</span></div>
+    </a>
+    <a class="card" href="https://doginfantry-enso-macro-risk-desk.hf.space/07_india">
+      <img src="assets/india.png" alt="India deep dive" loading="lazy">
+      <div class="label"><b>India Deep Dive</b><span>ENSO &times; IOD monsoon engine, desk view</span></div>
+    </a>
+  </div>
+
+  <footer>
+    <span>ENSO Macro Risk Desk &mdash; portfolio project by <a href="https://github.com/DogInfantry">Anklesh Rawat</a></span>
+    <span>Served live from <a href="https://huggingface.co/spaces/DogInfantry/enso-macro-risk-desk">Hugging&nbsp;Face Spaces</a></span>
+    <span>Not investment advice.</span>
+  </footer>
+</div>
+
+<script>
+  // Prewarm + honest status.
+  // - The hidden iframe GET is what actually wakes a sleeping Space, so it's
+  //   warm by the time the visitor clicks LAUNCH.
+  // - The pill is driven by the HF runtime API (CORS-enabled), NOT the iframe
+  //   load event — cross-origin `load` fires even on a 503 error page, so it
+  //   cannot distinguish LIVE from down.
+  (function () {
+    var APP = "https://doginfantry-enso-macro-risk-desk.hf.space/";
+    var API = "https://huggingface.co/api/spaces/DogInfantry/enso-macro-risk-desk/runtime";
+
+    var iframe = document.createElement("iframe");
+    iframe.id = "prewarm";
+    iframe.title = "prewarm";
+    iframe.setAttribute("aria-hidden", "true");
+    iframe.tabIndex = -1;
+    iframe.src = APP;
+    document.body.appendChild(iframe);
+
+    var pill = document.getElementById("status");
+    var text = document.getElementById("status-text");
+    var note = document.getElementById("coldstart-note");
+    function setState(cls, label, msg) {
+      pill.className = "pill" + (cls ? " " + cls : "");
+      text.textContent = label;
+      note.textContent = msg;
+    }
+
+    var tries = 0;
+    function poll() {
+      fetch(API).then(function (r) { return r.json(); }).then(function (j) {
+        if (j.stage === "RUNNING") {
+          setState("live", "LIVE", "desk is warm — opens instantly");
+        } else if (j.stage === "RUNTIME_ERROR" || j.stage === "PAUSED") {
+          setState("", "OFFLINE", "host is down — the launch button may not respond");
+        } else {
+          // SLEEPING / BUILDING / RESTARTING etc.: our iframe hit is waking it.
+          setState("", "WARMING…", "free-tier host waking up — ~30s");
+          retry();
+        }
+      }).catch(retry);
+    }
+    function retry() {
+      // ponytail: 36 x 5s = 3 min cap, then leave the last honest state up.
+      if (++tries < 36) setTimeout(poll, 5000);
+    }
+    poll();
+  })();
+</script>
+
+</body>
+</html>
