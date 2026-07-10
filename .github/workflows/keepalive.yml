@@ -1,0 +1,29 @@
+# Keep the Hugging Face Space awake + act as a simple uptime check.
+#
+# Free cpu-basic Spaces sleep after inactivity; the first visitor then eats a
+# 20-30s cold start. This cron GETs the app every 6 hours so it never idles
+# long enough to sleep. A non-200 fails the job, so a red X on the Actions tab
+# doubles as "the desk is down" monitoring.
+#
+# Notes:
+# - No secrets needed: it's a public GET against the app host.
+# - GitHub auto-disables scheduled workflows after ~60 days without repo
+#   activity; any push (or manual run) re-enables them.
+
+name: Keep HF Space awake
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"   # every 6h, off the top of the hour
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the Space
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 \
+            https://doginfantry-enso-macro-risk-desk.hf.space/)
+          echo "HTTP $code"
+          test "$code" = "200"
