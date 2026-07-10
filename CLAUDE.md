@@ -321,16 +321,20 @@ README clean. Scoped to THIS repo only. **If the HF token is rotated, update the
 
 **Vercel front-door + keep-alive (NEW 2026-07-10):** Vercel CANNOT host the app itself
 (Panel/Bokeh = long-running WebSocket server; Vercel is serverless). Instead:
-- `web/index.html` — static front-door (dark terminal aesthetic, theme.py palette hardcoded):
-  hero + LAUNCH DESK CTA + page-thumbnail deep links into the HF routes. A hidden iframe GET
-  of the app host **prewarms** a sleeping Space on page load; the status pill polls
+- `web/` — **Next.js 15 front-door** (App Router, TypeScript, `output:"export"` = pure
+  static; rebuilt from the original single index.html 2026-07-10 because the user wanted a
+  recognized framework on the Vercel project/repo, not "Framework: Other"). Structure:
+  `app/page.tsx` (client component: hero + LAUNCH DESK CTA + page-thumbnail deep links into
+  HF routes), `app/layout.tsx`, `app/globals.css` (theme.py palette hardcoded),
+  `public/assets/` (copy of `assets/`). A hidden iframe GET of the app host **prewarms** a
+  sleeping Space on page load; the status pill polls
   `https://huggingface.co/api/spaces/DogInfantry/enso-macro-risk-desk/runtime` (CORS-enabled)
   and maps stage → LIVE / WARMING… / OFFLINE. **Do NOT drive the pill off the iframe `load`
   event — cross-origin `load` fires even on a 503 error page** (bit us: it showed LIVE while
-  the Space was in RUNTIME_ERROR).
+  the Space was in RUNTIME_ERROR). Build: `cd web && npm run build` → `web/out/`.
 - Vercel wiring (one-time, dashboard): import `DogInfantry/El_Nino`, Root Directory=`web`,
-  Framework=Other, no build. Pushes touching `web/` auto-redeploy. `web/assets/` is a copy of
-  `assets/` (Vercel root must contain them).
+  everything else auto (Next.js is auto-detected — framework badge, `next build`, serves
+  `out/`). Pushes touching `web/` auto-redeploy.
 - `.github/workflows/keepalive.yml` — cron ping of the app host every 6h; non-200 fails the
   job (uptime monitoring). Keeps the free Space from sleeping (runtime API gcTimeout=48h).
   GitHub disables cron workflows after ~60 days of repo inactivity; any push re-enables.

@@ -18,7 +18,7 @@
     {
       "name": "frontdoor",
       "runtimeExecutable": ".venv/Scripts/python.exe",
-      "runtimeArgs": ["-m", "http.server", "8123", "-d", "web"],
+      "runtimeArgs": ["-m", "http.server", "8123", "-d", "web/out"],
       "port": 8123
     }
   ]

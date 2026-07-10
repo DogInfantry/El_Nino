@@ -1,0 +1,21 @@
+{
+  "name": "enso-macro-risk-desk-frontdoor",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Static Next.js front-door for the ENSO Macro Risk Desk (app itself runs on Hugging Face Spaces)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "^15",
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "typescript": "^5"
+  }
+}
