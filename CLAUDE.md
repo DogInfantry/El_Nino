@@ -338,10 +338,10 @@ README clean. Scoped to THIS repo only. **If the HF token is rotated, update the
 - `.github/workflows/keepalive.yml` — cron ping of the app host every 6h; non-200 fails the
   job (uptime monitoring). Keeps the free Space from sleeping (runtime API gcTimeout=48h).
   GitHub disables cron workflows after ~60 days of repo inactivity; any push re-enables.
-  **STATUS: exists locally, NOT pushed** — both the stored git credential and the `gh` token
-  lack the `workflow` OAuth scope (push AND contents-API rejected). Owner must run
-  `gh auth refresh -h github.com -s workflow`, then `git add .github/workflows/keepalive.yml
-  && git commit && git push`.
+  **LIVE 2026-07-10** (pushed `038e09f`; first dispatch run green, 13s, HTTP 200). Needed a
+  one-time `gh auth refresh -h github.com -s workflow` + `gh auth setup-git` — the previous
+  git credential lacked the `workflow` OAuth scope, which rejects any push touching
+  `.github/workflows/` (and the contents-API route too).
 - Local preview of the front-door: launch config `frontdoor` in `.claude/launch.json`
   (`python -m http.server 8123 -d web/out` — run `cd web && npm run build` first).
 
