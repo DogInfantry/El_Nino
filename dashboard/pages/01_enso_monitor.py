@@ -45,6 +45,12 @@ except Exception:  # noqa: BLE001
     def get_advisory():  # type: ignore[misc]
         return None
 
+try:
+    from weekly_nino34 import latest_weekly
+except Exception:  # noqa: BLE001
+    def latest_weekly():  # type: ignore[misc]
+        return None
+
 ACCENT = COLORS["teal"]
 
 RAW_CSS = f"""
@@ -170,9 +176,24 @@ def build_app() -> pn.viewable.Viewable:
     else:
         roni_card = _stat_card("Latest RONI", "—", "run roni_calculator", COLORS["muted"])
 
+    # Live weekly Niño-3.4 — the freshest reading available (~1 week behind), shown
+    # because the ONI's 3-month mean lags by design. A DIFFERENT quantity from the
+    # ONI (single week, OISST): never read it against the ±0.5°C event thresholds.
+    wk = latest_weekly()
+    if wk is not None:
+        weekly_card = _stat_card(
+            "Niño-3.4 · weekly", f"{wk.anom:+.1f}°C",
+            f"wk ctr. {wk.week_date:%d %b %Y} · 4-wk {wk.anom_4wk:+.2f}°C · "
+            "not ONI-comparable", COLORS.get("amber", "#f4b13a"))
+    else:
+        weekly_card = _stat_card("Niño-3.4 · weekly", "—",
+                                 "weekly feed unavailable", COLORS["muted"])
+
     cards = pn.Row(
-        _stat_card("Latest ONI", f"{latest_value:+.2f}°C", latest_label, COLORS["teal"]),
+        _stat_card("Latest ONI", f"{latest_value:+.2f}°C",
+                   f"{latest_label} · 3-mo mean", COLORS["teal"]),
         roni_card,
+        weekly_card,
         _stat_card("Phase", simple_phase, "±0.5°C threshold", phase_color),
         _stat_card("Event intensity", intensity,
                    "NOAA tier" if in_event else "no active event", COLORS["text"]),

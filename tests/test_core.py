@@ -16,6 +16,7 @@ import pandas as pd
 
 _ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_ROOT / "data" / "process"))
+sys.path.insert(0, str(_ROOT / "data" / "ingest"))
 sys.path.insert(0, str(_ROOT / "forecasting" / "verification"))
 
 from enso_phase_labeler import (  # noqa: E402
@@ -29,6 +30,7 @@ from lag_correlator import (  # noqa: E402
     lagged_cross_correlation,
 )
 from granger_ccm import ccm_convergence  # noqa: E402
+from weekly_nino34 import parse_weekly  # noqa: E402
 from skill_metrics import acc, msss, rmse, skill_by_lead  # noqa: E402
 
 
@@ -136,6 +138,27 @@ def test_ccm_recovers_coupling_direction() -> None:
     # fwd>rev asymmetry only holds for *weak* coupling, so we don't assert it.)
     assert fwd.notna().all()
     assert fwd.iloc[-1] > 0.3
+
+
+def test_weekly_nino34_parses_runtogether_negative() -> None:
+    """A negative anomaly is glued to the SST ("26.8-0.1") in the CPC weekly file.
+
+    That is the one case a naive ``str.split()`` gets wrong — it yields 7 fields
+    instead of 8 and silently shifts every column. Header lines must be ignored.
+    """
+    text = (
+        "Weekly SST data starts week centered on 2Sept1981\n"
+        "                Nino1+2      Nino3        Nino34        Nino4\n"
+        " Week          SST SSTA     SST SSTA     SST SSTA     SST SSTA\n"
+        " 04MAR2026     27.6 1.0     27.0 0.2     26.8-0.1     28.2 0.1\n"
+        " 22JUL2026     25.4 3.8     28.1 2.5     29.3 2.2     29.8 1.0\n"
+    )
+    df = parse_weekly(text)
+    assert len(df) == 2, "header lines must not be parsed as data"
+    assert df.iloc[0]["week_date"] == pd.Timestamp("2026-03-04")
+    assert df.iloc[0]["nino34_anom"] == -0.1   # the run-together case
+    assert df.iloc[0]["nino34_sst"] == 26.8
+    assert df.iloc[1]["nino34_anom"] == 2.2
 
 
 def _run() -> None:

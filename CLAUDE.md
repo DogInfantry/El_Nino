@@ -123,6 +123,7 @@ use explicit file names or a manifest).
 | `data/ingest/advisory_fetcher.py` | Fetches live NOAA CPC/IRI ENSO Diagnostic Discussion PDF → parses status + synopsis |
 | `data/ingest/ersst_fetcher.py` | Downloads ERSSTv5 netCDF (~150 MB, cached 30d), computes 1991–2020 anomalies for landmark months + latest → `sst_anomaly_grids.parquet` |
 | `data/ingest/pink_sheet.py` | World Bank Pink Sheet XLSX → tidy `commodities.parquet`. Exposes `FOCUS_COMMODITIES` list. |
+| `data/ingest/weekly_nino34.py` | **NEW (2026-07-30).** CPC **weekly** Niño-3.4 SST anomaly (`wksst9120.for`) → `weekly_nino34.parquet` (week_date · nino34_sst · nino34_anom · source). `latest_weekly()` is read **live at page load** (advisory-style, never raises) with the parquet as offline fallback; returns latest week + 4-wk mean. This is the freshest number on the desk (~1 wk lag) vs the ONI's ~2.5-mo label lag. |
 | `data/ingest/monsoon_fetcher.py` | **NEW (2026-06-28).** Fetches IMD 36-subdivision monthly rainfall CSV (github mirror of data.gov.in, 1901–2017) → all-India JJAS series → `monsoon_india.parquet` (year · jjas_mm · lpa_pct · category). Validated r=0.77 vs documented AISMR departures. |
 
 ### Data processing
@@ -162,7 +163,8 @@ use explicit file names or a manifest).
 `arima_backtest.parquet`, `lstm_forecast.parquet`, `lstm_backtest.parquet`,
 `forecasts_all.parquet`, `skill_all.parquet`, `monsoon_india.parquet`,
 `india_enso_iod.parquet`, `india_regression.parquet`, `india_years.parquet`,
-`exposure_index.parquet`, `landing_ccm.parquet`, `landing_verdicts.parquet` (NEW 2026-06-28/29)
+`exposure_index.parquet`, `landing_ccm.parquet`, `landing_verdicts.parquet` (NEW 2026-06-28/29),
+`weekly_nino34.parquet` (NEW 2026-07-30 — offline fallback for the live weekly nowcast)
 
 ---
 
@@ -222,14 +224,12 @@ the module (runs `build_app()`) + kaleido PNG export of all 4 Plotly figs. Mocku
   minor doc inconsistency (the behavior is correct; the docstring is stale)
 
 ### Broken ❌
-- **The HF Space is in `RUNTIME_ERROR`** (found 2026-07-10): runtime API reports
-  "Launch timed out, workload was not healthy after 30 min"; app host returns 503.
-  Codebase is fine (local pages load). Fix = restart the Space — `hf spaces restart`
-  or `HfApi().restart_space('DogInfantry/enso-macro-risk-desk')` or the Space
-  settings page. Claude's restart attempt was permission-blocked; the OWNER must do it.
-  If restart hits the 30-min health timeout again, check build/run logs
-  (`PYTHONIOENCODING=utf-8 hf spaces logs ...`) — could be a slow cold pull, not code.
-Everything local is fine: all caches present; all pages load.
+Nothing. (The old `RUNTIME_ERROR` entry from 2026-07-10 is **resolved** — verified
+2026-07-30: runtime API `stage: RUNNING`, app host returns HTTP 200, and the Space's
+`data/cache/oni.parquet` matches local row-for-row. If it errors again the fix is a
+Space restart — `hf spaces restart` or the Space settings page; Claude's restart
+attempt was permission-blocked back then, so the OWNER must do it. Read build/run
+logs with `PYTHONIOENCODING=utf-8 hf spaces logs ...`.)
 
 ---
 
@@ -345,9 +345,25 @@ README clean. Scoped to THIS repo only. **If the HF token is rotated, update the
 - Local preview of the front-door: launch config `frontdoor` in `.claude/launch.json`
   (`python -m http.server 8123 -d web/out` — run `cd web && npm run build` first).
 
-**Monthly data refresh (NEW 2026-07-10):** `python scripts/refresh_data.py` (add `--no-lstm`
-to skip the slow retrain) → review `git diff data/cache` → commit + push → HF Space redeploys
-itself. The script only chains the existing module `__main__`s in dependency order and prints
+**Monthly data refresh — now AUTOMATED (2026-07-30):** `.github/workflows/refresh-data.yml`
+runs on the **6th monthly** (cron `0 9 6 * *`, after CPC's ~5th publish) + manual dispatch:
+installs `requirements.txt`, runs `scripts/refresh_data.py`, and commits the cache diff to
+`master` only if something actually changed. **A green "no new upstream data" run is the
+expected outcome most months, not a failure.** Two guards make unattended push safe: the
+script runs `tests/test_core.py` as its last step, and it exits 1 if any cache came back
+MISSING or with an **older** max date than before. Because a `GITHUB_TOKEN` push does **not**
+trigger other workflows, the job explicitly `gh workflow run deploy-hf.yml` afterwards
+(needs `permissions: actions: write`). `refresh_data.py` falls back to `sys.executable`
+when there is no `.venv`, which is what lets it run on a runner at all.
+
+**Manual refresh** (unchanged): `python scripts/refresh_data.py` (add `--no-lstm`
+to skip the slow retrain — but see the ensemble-vintage note below) → review
+`git diff data/cache` → commit + push → HF Space redeploys itself.
+
+**`--no-lstm` is no longer silently wrong:** `ensemble.py` inner-joins the SARIMA and
+LSTM members on `date`/`(origin, lead)`, so refreshing one without the other used to emit
+a mixed-vintage cone with no warning. It now raises a `SystemExit` naming both vintages.
+CI therefore runs the FULL refresh (torch included). The script only chains the existing module `__main__`s in dependency order and prints
 a before/after cache-freshness table. Run shortly after the ~5th (CPC posts the new ONI then).
 Advisory is live-fetched at page load (never stale); Pink Sheet snapshot still ends 2024-12;
 monsoon data is a static 1901–2017 dataset; the Vercel front-door is static (no data).
@@ -385,6 +401,26 @@ Always activate `.venv` (Python 3.12) before running anything.
 computed one. The honest, on-moat story: the strong clean ENSO signal is on the climate/
 production side (monsoon, MC drought — proven), not noisy monthly prices. This is the
 misattribution guard, just more sweeping than the mockup. (Awaiting the user's A/B/C call.)
+
+### The ONI is labelled by its CENTER month — that is NOT staleness (2026-07-30)
+The ONI is a 3-month running mean and CPC's newest row is a *season* (e.g. AMJ 2026),
+stored with `date = 2026-05-01` (the centre month). Printing that month alone made the
+landing read "as of May 2026" on 2026-07-30 and the deploy looked 2.5 months stale when
+it was **exactly current** (local `oni.parquet` == CPC's file == the Space's copy, 917
+rows). Before ever "fixing" a staleness complaint, diff local vs CPC vs the Space —
+`https://huggingface.co/spaces/DogInfantry/enso-macro-risk-desk/resolve/main/data/cache/oni.parquet`
+is readable over plain HTTP. The pages now print the **season** plus `(3-mo mean, ctr. May)`
+and pair it with the live weekly nowcast; keep it that way.
+
+### CPC weekly Niño-3.4 — use `wksst9120.for`, NEVER `wksst8110.for`
+`wksst8110.for` (1981–2010 base) is **FROZEN at 27JAN2021** but still returns HTTP 200,
+so fetching it silently ships 5-year-old data. Only `wksst9120.for` (1991–2020 base) is
+live. The file is fixed-width and a **negative anomaly runs together with the SST**
+(`26.8-0.1`), so `str.split()` yields 7 fields instead of 8 and shifts every column —
+parse with `re.findall(r'-?\d+\.\d', line)` and assert 8 numbers (Niño-3.4 = idx 4/5).
+`tests/test_core.py` covers exactly that row. Also: a single weekly value is NOT
+comparable to the ONI's ±0.5 °C thresholds (different product and cadence) — always
+caption it as a distinct quantity and show the 4-week mean beside it.
 
 ### ONI data source — CPC ASCII, not HDX CSV
 Primary source: `https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt`

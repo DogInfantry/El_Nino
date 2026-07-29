@@ -1,0 +1,72 @@
+# Monthly data refresh — runs the pipeline, commits the cache diff, redeploys.
+#
+# SCOPE: this workflow lives in THIS repo only and runs only for THIS repo.
+#
+# NOAA CPC publishes the new ONI value ~5th of each month, so this fires on the
+# 6th. Most runs will legitimately find nothing new (the ONI gains one row a
+# month and ERSST/Pink Sheet move on their own cadence) — a green "no new
+# upstream data" run is the expected outcome, not a failure.
+#
+# Safety: scripts/refresh_data.py runs tests/test_core.py as its final step AND
+# refuses (exit 1) if any cache came back MISSING or with an older max date than
+# it had. A non-zero exit means nothing is committed and the run goes red.
+
+name: Monthly data refresh
+
+on:
+  schedule:
+    - cron: "0 9 6 * *"     # 6th, 09:00 UTC — after CPC's ~5th publish
+  workflow_dispatch: {}
+
+permissions:
+  contents: write           # commit the refreshed caches
+  actions: write            # dispatch deploy-hf.yml (see below)
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # torch IS required: a --no-lstm refresh would leave the SARIMA and LSTM
+      # members on different origins, and ensemble.py now refuses that.
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Downloads the ~150 MB ERSSTv5 netCDF, re-runs every processing step and
+      # the unit tests. refresh_data.py falls back to this interpreter when no
+      # .venv is present.
+      - name: Refresh caches
+        run: python scripts/refresh_data.py
+
+      - name: Commit if anything changed
+        id: commit
+        run: |
+          if git diff --quiet -- data/cache; then
+            echo "no new upstream data — nothing to commit"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/cache
+          git commit -m "data: monthly refresh (automated)"
+          git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      # A push made with GITHUB_TOKEN does NOT trigger other workflows, so
+      # deploy-hf.yml's `push` trigger will not fire on its own. Dispatch it.
+      - name: Redeploy the HF Space
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run deploy-hf.yml --ref master

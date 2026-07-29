@@ -27,10 +27,15 @@ ROOT = Path(__file__).resolve().parents[1]
 PY = ROOT / ".venv" / "Scripts" / "python.exe"
 if not PY.exists():  # non-Windows fallback
     PY = ROOT / ".venv" / "bin" / "python"
+if not PY.exists():  # no .venv at all (CI runner) — reuse this interpreter
+    PY = Path(sys.executable)
 
 # (label, module path) in dependency order.
 STEPS = [
     ("ONI (CPC ascii)",          "data/ingest/oni_fetcher.py"),
+    # Cheap (one small text file) and the freshest number on the desk. The pages
+    # read it live; this only refreshes the offline-fallback snapshot.
+    ("Weekly Nino-3.4 snapshot", "data/ingest/weekly_nino34.py"),
     # --no-cache: their 30-day caches can straddle a month boundary and miss
     # the newly published ERSST month (raw netCDF is also cleared below).
     ("ERSSTv5 grids (~150MB download)", "data/ingest/ersst_fetcher.py --no-cache"),
@@ -49,6 +54,7 @@ STEPS = [
 DATE_CACHES = [
     "oni.parquet", "roni.parquet", "enso_phases.parquet",
     "sst_anomaly_grids.parquet", "forecasts_all.parquet",
+    "weekly_nino34.parquet",
 ]
 
 
@@ -97,6 +103,24 @@ def main() -> int:
     for name in DATE_CACHES:
         mark = "  (unchanged)" if before[name] == after[name] else ""
         print(f"  {name:28s} {before[name]} -> {after[name]}{mark}")
+
+    # Regression gate. This is what makes an unattended CI refresh safe to commit:
+    # a cache must never come back MISSING or with an OLDER max date than it had.
+    # ponytail: date monotonicity only — a truncated series drops its max date too,
+    # so a separate row-count check would earn nothing.
+    regressions = [
+        f"{name}: {before[name]} -> {after[name]}"
+        for name in DATE_CACHES
+        if after[name] == "MISSING"
+        or (before[name] not in ("MISSING",) and after[name] < before[name])
+    ]
+    if regressions:
+        print("\n!! REGRESSION — refusing to vouch for these caches:")
+        for r in regressions:
+            print(f"   {r}")
+        print("Do NOT commit. Investigate upstream before pushing.")
+        return 1
+
     print("\nNext: git diff data/cache  ->  commit  ->  push (HF Space redeploys itself).")
     return 0
 

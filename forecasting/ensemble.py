@@ -77,6 +77,21 @@ def main() -> None:
     arima_fc = pd.read_parquet(CACHE_DIR / "arima_forecast.parquet")
     lstm_fc = pd.read_parquet(CACHE_DIR / "lstm_forecast.parquet")
 
+    # Both merges below are INNER joins (on date / on (origin, lead)), so a refresh
+    # that updated one member but not the other (e.g. `refresh_data.py --no-lstm`)
+    # would silently average a new-origin SARIMA against a stale-origin LSTM and
+    # emit a mixed-vintage cone. Fail loudly instead.
+    for label, a, b, col in (
+        ("forecast", arima_fc, lstm_fc, "date"),
+        ("backtest", arima_bt, lstm_bt, "origin"),
+    ):
+        if a[col].max() != b[col].max():
+            raise SystemExit(
+                f"Vintage mismatch: SARIMA {label} {col} ends {a[col].max():%Y-%m} but "
+                f"LSTM ends {b[col].max():%Y-%m}. Re-run forecasting/ml_models/"
+                "lstm_enso.py (a --no-lstm refresh leaves the ensemble mixed-vintage)."
+            )
+
     ens_bt = build_ensemble_backtest(arima_bt, lstm_bt)
     ens_fc = build_ensemble_forecast(arima_fc, lstm_fc)
 

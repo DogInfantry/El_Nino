@@ -51,6 +51,12 @@ except Exception:  # noqa: BLE001
     def get_advisory():  # type: ignore[misc]
         return None
 
+try:
+    from weekly_nino34 import latest_weekly
+except Exception:  # noqa: BLE001
+    def latest_weekly():  # type: ignore[misc]
+        return None
+
 AMBER = COLORS.get("amber", "#f4b13a")
 _LINE = "rgba(138,148,166,0.16)"
 
@@ -317,7 +323,13 @@ def build_app() -> pn.viewable.Viewable:
 
     latest = oni.dropna(subset=["oni"]).iloc[-1]
     latest_oni = float(latest["oni"])
-    asof = pd.Timestamp(latest["date"]).strftime("%b %Y")
+    # The ONI is a 3-month mean labelled by its CENTER month, so AMJ 2026 carries
+    # date 2026-05-01. Printing that month alone made a current desk read two
+    # months stale, so name the season and say what the centre month means.
+    asof = f"{latest['season']} {latest['year']}"
+    asof_ctr = pd.Timestamp(latest["date"]).strftime("%b")
+    # Live weekly Niño-3.4 — the freshest number on the desk (~1 week behind).
+    wk = latest_weekly()
 
     advisory = get_advisory()
     status = advisory.status if advisory is not None else (
@@ -335,7 +347,10 @@ def build_app() -> pn.viewable.Viewable:
         for label, href, on in nav)
     cmd = pn.pane.HTML(
         "<div class='cmd'><span class='go'>ENSO&lt;GO&gt;</span>" + chips
-        + f"<span class='live'>LIVE · NOAA CPC · {status} · as of {asof}</span></div>",
+        + f"<span class='live'>LIVE · NOAA CPC · {status} · ONI {asof} "
+        f"(3-mo mean, ctr. {asof_ctr})"
+        + (f" · Niño-3.4 wk {wk.week_date:%d %b} {wk.anom:+.1f}°C" if wk else "")
+        + "</span></div>",
         margin=0)
     ticker = pn.pane.HTML(_ticker(latest_oni, exp, fc), margin=0)
 
@@ -344,7 +359,17 @@ def build_app() -> pn.viewable.Viewable:
         pn.pane.HTML("<div class='wid'><div class='h'>Niño-3.4 · now</div></div>", margin=0),
         pn.pane.Plotly(build_compact_gauge(latest_oni), config=_PLOTLY_CFG, margin=0),
         pn.pane.HTML(f"<div class='cap'>ONI <b>{latest_oni:+.2f}</b> · "
-                     f"3-mo mean · {asof}</div>", margin=0),
+                     f"3-mo mean · {asof} (ctr. {asof_ctr})</div>", margin=0),
+        # Weekly nowcast. Deliberately captioned as a DIFFERENT quantity: it is a
+        # single-week OISST anomaly, not a 3-month mean, so it must never be read
+        # against the ONI's +/-0.5C event thresholds. 4-wk mean damps weekly noise.
+        pn.pane.HTML(
+            (f"<div class='cap'>NOWCAST <b>{wk.anom:+.1f}</b> wk ctr. "
+             f"{wk.week_date:%d %b} · 4-wk <b>{wk.anom_4wk:+.2f}</b>"
+             "<br><span style='opacity:.62'>weekly Niño-3.4 SST anom — "
+             "not ONI-comparable</span></div>")
+            if wk else "<div class='cap'>NOWCAST — <span style='opacity:.62'>"
+                       "weekly feed unavailable</span></div>", margin=0),
         pn.pane.HTML("<div class='wid' style='margin-top:14px'><div class='h'>"
                      "ONI trajectory · 24 mo</div></div>", margin=0),
         pn.pane.Plotly(build_oni_spark(oni), config=_PLOTLY_CFG, margin=0),
