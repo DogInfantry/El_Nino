@@ -30,7 +30,14 @@ _PAGE_DIR = Path(__file__).resolve().parent
 _DASH_DIR = _PAGE_DIR.parent
 _ROOT = _DASH_DIR.parent
 sys.path.insert(0, str(_DASH_DIR))
+sys.path.insert(0, str(_ROOT / "data" / "ingest"))
 from theme import COLORS, CACHE_DIR, load_oni, style_figure  # noqa: E402
+
+try:
+    from weekly_nino34 import latest_weekly
+except Exception:  # noqa: BLE001
+    def latest_weekly():  # type: ignore[misc]
+        return None
 
 MODEL_COLORS = {
     "SARIMA": COLORS["el_nino"],
@@ -168,10 +175,32 @@ def build_app() -> pn.viewable.Viewable:
         "— the ENSO spring predictability barrier. Index: ONI (see Monitor for the "
         "RONI caveat).</div>")
 
+    # Live receipt for the under-calling caveat above: the newest OBSERVED weekly
+    # Niño-3.4 anomaly next to the ensemble's nearest-month mean. Deliberately does
+    # NOT compute a verdict — they are different quantities (single week of OISST vs
+    # a 3-month-mean ONI forecast), so the reader is shown both, not a comparison.
+    wk = latest_weekly()
+    if wk is not None:
+        ens = forecasts[forecasts["model"] == "Ensemble"].sort_values("date")
+        near = f"{float(ens.iloc[0]['mean']):+.2f}°C ({ens.iloc[0]['date']:%b %Y})" \
+            if len(ens) else "n/a"
+        nowcast = pn.pane.HTML(
+            "<div class='enso-note'><b>Observed vs forecast, right now.</b> Latest "
+            f"weekly Niño-3.4 anomaly <b>{wk.anom:+.1f}°C</b> (wk ctr. "
+            f"{wk.week_date:%d %b %Y}, 4-wk {wk.anom_4wk:+.2f}°C) against this "
+            f"ensemble's nearest month <b>{near}</b>. These are <i>not</i> the same "
+            "quantity — one is a single week of OISST, the other a 3-month-mean ONI "
+            "forecast — so read the gap as context for the under-calling noted above, "
+            "not as a scored error.</div>")
+    else:
+        nowcast = pn.pane.HTML(
+            "<div class='enso-note'>Live weekly Niño-3.4 feed unavailable.</div>")
+
     return pn.Column(
         header, pn.Spacer(height=8),
         pn.Column(fan, css_classes=["enso-card"]), pn.Spacer(height=8),
-        pn.Column(skl, css_classes=["enso-card"]), pn.Spacer(height=8), warn,
+        pn.Column(skl, css_classes=["enso-card"]), pn.Spacer(height=8),
+        nowcast, pn.Spacer(height=8), warn,
         styles={"background": COLORS["bg"], "padding": "22px",
                 "min-height": "100vh", "max-width": "1500px", "margin": "0 auto"})
 

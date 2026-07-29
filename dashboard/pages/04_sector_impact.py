@@ -189,7 +189,11 @@ def build_app() -> pn.viewable.Viewable:
         "demand) can drive co-movement. Positive lag means the ONI <i>leads</i> the "
         "price. Agricultural impacts typically lag the ONI peak by 6–24 months. "
         "Causal direction is tested with Granger / CCM in the Causation explorer "
-        "(Phase 2). Prices are nominal USD (World Bank Pink Sheet).</div>"
+        "(Phase 2). Prices are nominal USD (World Bank Pink Sheet). "
+        "<b>Price coverage ends Dec 2024</b> — the World Bank's historical monthly "
+        "workbook is a periodic snapshot (last stamped Jan 2025), not a live feed. "
+        "Deliberate trade: this analysis needs decades of history for the lag "
+        "structure, not the current month. The ENSO index itself is current.</div>"
     )
 
     return pn.Column(
