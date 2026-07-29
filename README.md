@@ -109,9 +109,9 @@ That "misattribution guard" — showing the *computed* verdict instead of an ass
 | # | Page | What it does |
 |:-:|------|------|
 | **00** | **Macro Risk Desk** (landing) | Command-bar terminal: Niño-3.4 gauge · ONI trajectory · forecast cone · **ENSO Exposure Index** choropleth · most-exposed leaderboard · **causal-test strip** |
-| **01** | ENSO Monitor | Live ONI **+ RONI** dual series (1950–present), gauge, live NOAA advisory badge, CSV export |
+| **01** | ENSO Monitor | Live ONI **+ RONI** dual series (1950–present), gauge, live NOAA advisory badge, **weekly Niño-3.4 nowcast** (~1-week lag), CSV export |
 | **02** | Global SST Map | ERSSTv5 2°×2° anomaly grids, flat + orthographic globe, teleconnection zones |
-| **03** | Forecast | SARIMA + LSTM + ensemble fan chart, CI bands, ACC-vs-lead skill |
+| **03** | Forecast | SARIMA + LSTM + ensemble fan chart, CI bands, ACC-vs-lead skill, **observed-vs-forecast check** (live weekly SST beside the ensemble's nearest month) |
 | **04** | Sector Impact | Detrended lag-correlation heatmap, ONI × 71 commodities, lags 0–24 mo |
 | **05** | Causation Explorer | Live **Granger + CCM**, both directions, plain-language verdict |
 | **06** | Historical Events | Per-event cards since 1950: peak ONI/RONI, Callahan & Mankin 2023 GDP losses |
@@ -203,6 +203,7 @@ Panel/Bokeh is a long-running WebSocket server, so the app ships as a **Docker S
 | Source | Provider | Module | Auth |
 |:-------|:---------|:-------|:----:|
 | [ONI ASCII feed](https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt) | NOAA CPC | `oni_fetcher.py` | None |
+| [Weekly Niño-3.4 SST anomaly](https://www.cpc.ncep.noaa.gov/data/indices/wksst9120.for) | NOAA CPC | `weekly_nino34.py` — read **live at page load**; parquet snapshot is only the offline fallback | None |
 | [ENSO Diagnostic Discussion (PDF)](https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.pdf) | NOAA CPC / IRI | `advisory_fetcher.py` | None |
 | [Pink Sheet — monthly commodities](https://www.worldbank.org/en/research/commodity-markets) | World Bank | `pink_sheet.py` | None |
 | [ERSSTv5 netCDF grids](https://www.ncei.noaa.gov/pub/data/cmb/ersst/v5/netcdf/) | NOAA NCEI | `ersst_fetcher.py` | None |
@@ -216,7 +217,7 @@ Panel/Bokeh is a long-running WebSocket server, so the app ships as a **Docker S
 Rigorous analysis means disclosing limits. Read before drawing conclusions.
 
 1. **ONI vs RONI.** Charts label every index. On **16 Feb 2026 NOAA adopted RONI** (subtracts tropical-mean SST to remove background warming) as the *official* ENSO index; under RONI the 2023–24 El Niño is ~0.6 °C cooler. Don't compare ONI- and RONI-classified events directly. This repo's RONI is computed from ERSSTv5 on a fixed 1991–2020 base — it *approximates* the official value.
-2. **The 3-month mean lags raw Niño-3.4.** A weekly spike can precede the smoothed ONI crossing ±0.5 °C by ~2 months. Current phase is fetched live, never hardcoded.
+2. **The 3-month mean lags raw Niño-3.4 — and is labelled by its *centre* month.** A weekly spike can precede the smoothed ONI crossing ±0.5 °C by ~2 months. CPC's newest ONI row is a *season*: AMJ 2026 is stored under `2026-05-01`, so a fully current reading legitimately displays as "May". Pages therefore name the season (`AMJ 2026 · 3-mo mean, ctr. May`) and pair it with the **live weekly Niño-3.4 nowcast** (~1-week lag) so freshness is visible. The weekly value is a **different quantity** — a single week of OISST, not a 3-month mean — so it must never be read against ONI's ±0.5 °C event thresholds; the 4-week mean is shown beside it to damp noise. Current phase is fetched live, never hardcoded.
 3. **Correlation ≠ causation.** Sector links are detrended Pearson r; the IOD and MJO can drive spurious co-movement. Causal direction needs Granger / CCM (Page 05) — and most price links *fail* it (see [The Moat](#-the-moat-causal-rigor)).
 4. **Exposure Index is a research construct** — 50% computed peak lagged ONI–commodity correlation + 50% curated structural exposure. Not an official product.
 5. **Source freshness.** The World Bank Pink Sheet workbook currently ends **2024-12**; fetchers degrade gracefully to cache. India crop/CPI tabs are illustrative pending USDA/FAOSTAT ingestion.
