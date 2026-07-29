@@ -356,6 +356,14 @@ trigger other workflows, the job explicitly `gh workflow run deploy-hf.yml` afte
 (needs `permissions: actions: write`). `refresh_data.py` falls back to `sys.executable`
 when there is no `.venv`, which is what lets it run on a runner at all.
 
+The workflow retries the refresh once after 5 min: **NOAA's `downloads.psl.noaa.gov`
+intermittently 502s** on the ERSST netCDF (it did during this workflow's first dispatch
+on 2026-07-30, from CI *and* from a laptop — so it is upstream, not a runner block).
+`get_session()` retries 5xx but only over ~16s. When ERSST is down the whole run fails
+and commits **nothing** — that is deliberate: ONI updating without RONI/grids would
+produce exactly the mixed-vintage caches the ensemble guard exists to prevent. Re-dispatch
+the workflow once NOAA is back.
+
 **Manual refresh** (unchanged): `python scripts/refresh_data.py` (add `--no-lstm`
 to skip the slow retrain — but see the ensemble-vintage note below) → review
 `git diff data/cache` → commit + push → HF Space redeploys itself.

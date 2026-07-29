@@ -45,8 +45,19 @@ jobs:
       # Downloads the ~150 MB ERSSTv5 netCDF, re-runs every processing step and
       # the unit tests. refresh_data.py falls back to this interpreter when no
       # .venv is present.
+      #
+      # One retry: NOAA's PSL download host intermittently 502s (it did during the
+      # first dispatch of this workflow on 2026-07-30, from CI *and* from a laptop).
+      # get_session() already retries 5xx over ~16s, which is too short for an
+      # outage; a monthly cron that gives up loses the whole month. Steps are
+      # idempotent, so re-running from the top is safe.
       - name: Refresh caches
-        run: python scripts/refresh_data.py
+        run: |
+          python scripts/refresh_data.py || {
+            echo "::warning::first refresh attempt failed (often a transient NOAA 502) — retrying in 5 min"
+            sleep 300
+            python scripts/refresh_data.py
+          }
 
       - name: Commit if anything changed
         id: commit
