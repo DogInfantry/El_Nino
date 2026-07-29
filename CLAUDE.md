@@ -223,6 +223,32 @@ the module (runs `build_app()`) + kaleido PNG export of all 4 Plotly figs. Mocku
   the docstring header but the actual implementation uses `mode="detrend"` —
   minor doc inconsistency (the behavior is correct; the docstring is stale)
 
+### Done this session (2026-07-30) ✅ — freshness + self-refreshing data
+User asked "can we update the data, the deploy says as of May 2026?" **Answer: the data was
+never stale.** Local caches == the Space's copies == CPC's newest value (ONI AMJ 2026 +0.98,
+917 rows). The ONI is a 3-month mean stored under its **centre month**, so a current value
+displayed as "May 2026". It was a labelling problem, not a data problem. Shipped:
+- **`data/ingest/weekly_nino34.py`** — CPC weekly Niño-3.4 (`wksst9120.for`), read **live at
+  page load** (advisory pattern, never raises) with `weekly_nino34.parquet` as the offline
+  fallback. Gives the desk a ~1-week-old number: **+2.2 °C, wk ctr. 22 Jul 2026** (4-wk +2.00).
+- **Labels + nowcast** on `00_landing` (chip + rail) and `01_enso_monitor` (new stat card).
+  Both name the season and caption the weekly as a **different quantity** ("not
+  ONI-comparable"). NOT propagated to 02/05/06/07/08 on purpose — a Jul-2026 weekly SST value
+  next to 1950-onward history or prices ending 2024 advertises a mismatch instead of informing.
+- **`03_forecast`** — "Observed vs forecast, right now": live weekly (+2.2) beside the
+  ensemble's nearest month (**+1.20**, Jun 2026). Turns the page's existing "our baselines
+  under-call strong events" caveat into a live receipt. Framed as context, not a scored error.
+- **`04_sector_impact`** — states that price coverage ends Dec 2024 and *why*. Silently
+  trailing off in 2024 read as neglect; saying so reads as a decision.
+- **`forecasting/ensemble.py`** — vintage guard (see Gotchas: `--no-lstm` used to silently
+  emit a mixed-vintage cone).
+- **`.github/workflows/refresh-data.yml`** — monthly self-refresh, **proven green
+  end-to-end** (commit `e152e55` was bot-authored). See Deployment.
+- Docs: `README.md` (weekly row in the data-source table, page 01/03 blurbs, caveat 2 rewritten)
+  and `deploy/hf/README.md` (the Space's own front card).
+Verified by reading the **rendered DOM on the live Space** in a browser, not just HTTP codes:
+all 9 routes 200, no console errors, no fallback placeholders anywhere.
+
 ### Broken ❌
 Nothing. (The old `RUNTIME_ERROR` entry from 2026-07-10 is **resolved** — verified
 2026-07-30: runtime API `stage: RUNNING`, app host returns HTTP 200, and the Space's
@@ -235,19 +261,30 @@ logs with `PYTHONIOENCODING=utf-8 hf spaces logs ...`.)
 
 ## Active Task
 
-**Landing page is BUILT + committed (2026-06-30).** The causation-strip A/B/C decision is
-**RESOLVED = Option A** (honest real verdicts + reframed headline). `00_landing.py` ties the
-whole desk together: gauge + ONI spark + forecast cone (rail), exposure choropleth (center),
-linked leaderboard (right), real-verdict causation strip (bottom). Verified via module import
-+ kaleido PNG export. Product thesis locked: "ENSO Macro Risk Desk" — DESCRIBE → PRESCRIBE.
+**NOTHING IN FLIGHT. Working tree clean, everything pushed, deploy live and healthy.**
+(`git status` shows only `?? .claude/data/` — empty dirs a plugin created, inert, ignore them.)
 
-**No open blocker.** Next obvious moves (pick with the user): (1) add more region clones
-(Brazil/coffee, Australia/wheat, Peru/floods sign="wet", cocoa belt) on `region_template.py`;
-(2) optionally wire the choropleth/leaderboard country-click to actually navigate to 07/08
-(currently the leaderboard rows are `<a href="/07_india">` links that work under
-`panel serve`; the Plotly map itself is hover-only — a Panel click callback could route it);
-(3) build a single `app.py` entry point / multi-page nav so the 7 pages serve as one site;
-(4) keep pushing to GitHub (origin already set).
+The 2026-07-30 freshness work is complete and verified on the live Space (see *Done this
+session* above). The landing/causation-strip decision from 2026-06-30 remains RESOLVED =
+Option A. Product thesis locked: "ENSO Macro Risk Desk" — DESCRIBE → PRESCRIBE.
+
+**The one thing a new session should know is time-based, not code-based:** CPC publishes
+MJJ 2026 (~Aug 5) and `refresh-data.yml` fires unattended on **Aug 6**. A green
+"no new upstream data — nothing to commit" run is a **pass**, not a failure. Nothing to do
+unless that run goes red.
+
+**Highest-value open work is analytical, not technical:** the prescriptive layer is now
+regime-stale. The DESK VIEW badges on `07_india`/`08_seasia` and `exposure_index.parquet`
+were written when ONI sat near neutral; it is now **+0.98 and strengthening** (weekly +2.2).
+Since DESCRIBE → PRESCRIBE is the whole thesis, a stale stance costs more credibility than
+any label ever did. Discuss with the user before rewriting stances — they are judgement calls,
+not computed outputs.
+
+**Verify Panel pages** by importing the module (runs `build_*()`) with
+`PYTHONIOENCODING=utf-8`. For the LIVE Space, `get_page_text`/`curl` return **empty** because
+Panel mounts into shadow DOM — walk `shadowRoot`s via a JS eval instead, and allow ~30 s after
+a deploy before trusting a MISS (a mid-restart container serves the old code). Screenshots of
+the live server need the browser pane displayed; kaleido PNG export still works for figures.
 
 **Verify Panel pages** by importing the module (runs `build_*()`) + exporting Plotly figs to
 PNG via kaleido — you CANNOT screenshot the live Bokeh server (websocket). Use
@@ -259,15 +296,20 @@ list-wrapped scalar (`[x.iloc[-1]]`) — the latter is un-serializable under kal
 
 ## Next Steps (ordered)
 
-1. **Add more regions** — Brazil/coffee, Australia/wheat, Peru/floods (sign="wet"), cocoa
+1. **Refresh the positioning views for a strengthening El Niño** — highest value. DESK VIEW
+   badges on `07_india`/`08_seasia` + `exposure_index.parquet` were written near-neutral; ONI
+   is now +0.98 with weekly SST +2.2. Ask the user before changing any stance.
+2. **Add more regions** — Brazil/coffee, Australia/wheat, Peru/floods (sign="wet"), cocoa
    belt — each a ~60-line config clone of `08_seasia.py` on `region_template.py`.
-2. **Single entry point / nav** — `app.py` or a header nav so the 7 pages serve as one site;
-   optionally make the landing choropleth click route to 07/08 (leaderboard rows already do).
 3. **Wire India's illustrative tabs** — KPI rail + Agriculture crop bars need real crop/CPI
    ingestion (USDA/FAOSTAT). Climate/Economics/History are already real.
-4. **Keep pushing to GitHub** — remote IS configured: `origin` →
-   `https://github.com/DogInfantry/El_Nino.git`. Just `git push` as milestones land.
-5. **(Optional)** EM-DAT bubbles (page 02) · CCM surrogate significance · custom HF domain.
+4. **(Deferred on purpose)** Pink Sheet live ingest — splice the latest dated World Bank
+   monthly bulletin onto the historical workbook so pages 04/05/07/08 pass Dec 2024. Real
+   risk: a two-source seam with differing formats and revisions can corrupt the
+   lag/Granger/CCM work that *is* the moat, for recency the analysis doesn't need. The cutoff
+   is now disclosed on page 04 instead. Only do this if the user explicitly wants it.
+5. **(Optional)** EM-DAT bubbles (page 02) · CCM surrogate significance · custom HF domain ·
+   landing choropleth click-to-route (leaderboard rows already link).
 
 ---
 
