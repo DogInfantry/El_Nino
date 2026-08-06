@@ -38,6 +38,8 @@ STEPS = [
     ("Weekly Nino-3.4 snapshot", "data/ingest/weekly_nino34.py"),
     # --no-cache: their 30-day caches can straddle a month boundary and miss
     # the newly published ERSST month (raw netCDF is also cleared below).
+    # Cheap text files. Independent of the ONI, so order vs ERSST does not matter.
+    ("Ancillary climate indices", "data/ingest/climate_indices.py"),
     ("ERSSTv5 grids (~150MB download)", "data/ingest/ersst_fetcher.py --no-cache"),
     ("RONI",                     "data/process/roni_calculator.py --no-cache"),
     ("ENSO phases",              "data/process/enso_phase_labeler.py"),

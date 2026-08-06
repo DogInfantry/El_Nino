@@ -87,6 +87,12 @@ REGISTRY: tuple[Source, ...] = (
            "https://data.gov.in/", None, "monsoon_india.parquet",
            "Fixed 1901–2017 dataset. All-India JJAS is an unweighted subdivision mean "
            "(r=0.77 vs the official area-weighted AISMR)."),
+    Source("Ancillary climate indices", "feed",
+           "https://psl.noaa.gov/data/correlation/", 31, "climate_indices.parquet",
+           "SOI · Niño 1+2/3/4 · TNI · PDO · AMO · PNA · WP · DMI. Individual indices go "
+           "frozen upstream while still serving HTTP 200 (AMO stopped at 2023-01); "
+           "climate_indices.model_features() drops those before any model sees them.",
+           expected_lag_days=31),
     Source("RONI (in-repo)", "computed",
            "derived from ERSSTv5", 31, "roni.parquet",
            "Fixed 1991–2020 base — approximates, does not reproduce, NOAA's official RONI. "

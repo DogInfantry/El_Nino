@@ -178,6 +178,33 @@ Recomputed every month by `data/process/positioning.py`, after the verdicts it d
   30-year bases. Values are close, not identical.
 - **SARIMA beats the LSTM** on this short univariate series. Both beat persistence at all 12
   leads. The result is reported as-is rather than tuned until deep learning wins.
+- **Ancillary indices update on ragged schedules.** SOI, PNA and WP run about a month ahead
+  of the Niño regions, which run ahead of TNI and the DMI. Any model consuming them must
+  handle a ragged right edge rather than assume a rectangular matrix.
+
+### Frozen upstreams
+
+Some public index files stop updating while still returning HTTP 200, so a naive fetch
+ships years-old data as if it were current. Two are known:
+
+| File | Status | Handling |
+|---|---|---|
+| CPC `wksst8110.for` | frozen at 2021-01-27 | never fetched; only `wksst9120.for` is used |
+| PSL `amon.us.data` (AMO) | frozen at 2023-01 | fetched and flagged, excluded from model input |
+
+`climate_indices.coverage()` computes each index's lag behind the freshest one and marks
+anything more than 400 days behind as frozen; `model_features()` drops those columns before
+any model sees them, so the exclusion happens once at the source rather than being
+remembered at each call site.
+
+### Sources deliberately not used
+
+- **Bureau of Meteorology (RMM / MJO index).** Requesting the RMM file returns a block page
+  stating the Bureau "does not support web scraping: if you are trying to access Bureau data
+  through automated means, you should stop." That is the data owner declining automated
+  access, so the index is out of scope rather than worked around. MJO is a daily
+  sub-seasonal index and adds little to a monthly desk.
+- **ISRO / IIRS satellite archives** — see the section below.
 
 ---
 

@@ -32,6 +32,7 @@ from lag_correlator import (  # noqa: E402
 from granger_ccm import ccm_convergence  # noqa: E402
 from weekly_nino34 import parse_weekly  # noqa: E402
 from source_registry import Source, _status  # noqa: E402
+from climate_indices import parse_dmi_csv, parse_psl_data  # noqa: E402
 from exposure_index import EXPOSURE_VERSION, REGISTRY  # noqa: E402
 from positioning import (  # noqa: E402
     DIVERGENCE_TOL,
@@ -227,6 +228,43 @@ def test_freshness_subtracts_structural_label_lag() -> None:
     assert _status(pink, 5_000) == "SNAPSHOT"
     assert _status(Source("IMD", "static", "u", None, "m.parquet"), 9_999) == "STATIC"
     assert _status(Source("X", "computed", "u", 31, "nope.parquet"), None) == "MISSING"
+
+
+def test_psl_data_parser_reads_sentinel_from_file() -> None:
+    """PSL files carry their own missing-value sentinel; assuming one corrupts real data.
+
+    Not every file uses -99.99. Hard-coding it would turn a genuine -9.9 reading into a
+    data point in a file that uses -9.9 as its sentinel, and vice versa. The footer text
+    after the sentinel line must also not be parsed as data.
+    """
+    text = (
+        "        1950        1951\n"
+        "1950   0.10  -0.20 -99.99 -99.99 -99.99 -99.99 "
+        "-99.99 -99.99 -99.99 -99.99 -99.99 -99.99\n"
+        "1951  -4.00 -99.99 -99.99 -99.99 -99.99 -99.99 "
+        "-99.99 -99.99 -99.99 -99.99 -99.99 -99.99\n"
+        "  -99.99\n"
+        "  SOI Index from CPC\n"
+        " https://psl.noaa.gov/data/timeseries/month/for info\n"
+    )
+    df = parse_psl_data(text)
+    assert len(df) == 3, "sentinels must be dropped and the footer ignored"
+    assert df.iloc[0]["date"] == pd.Timestamp("1950-01-01")
+    assert df.iloc[0]["value"] == 0.10
+    assert df.iloc[2]["value"] == -4.00        # a large negative that is NOT the sentinel
+
+
+def test_dmi_parser_drops_future_padding() -> None:
+    """The DMI csv pads the rest of the current year with -9999; keeping it would make
+    "latest DMI" report December of this year with a garbage value."""
+    text = ("Date, DMI HadISST1.1  missing value -9999\n"
+            "1870-01-01,   -0.438\n"
+            "2026-05-01,    0.310\n"
+            "2026-06-01,-9999.000\n"
+            "2026-12-01,-9999.000\n")
+    df = parse_dmi_csv(text)
+    assert len(df) == 2
+    assert df["date"].max() == pd.Timestamp("2026-05-01")
 
 
 def test_methodology_doc_matches_code() -> None:
