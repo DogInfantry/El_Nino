@@ -33,6 +33,13 @@ from granger_ccm import ccm_convergence  # noqa: E402
 from weekly_nino34 import parse_weekly  # noqa: E402
 from source_registry import Source, _status  # noqa: E402
 from climate_indices import parse_dmi_csv, parse_psl_data  # noqa: E402
+from analogs import (  # noqa: E402
+    EXCLUDE_MONTHS,
+    FORWARD_MONTHS,
+    POINT_INDICES,
+    find_analogs,
+    state_matrix,
+)
 from exposure_index import EXPOSURE_VERSION, REGISTRY  # noqa: E402
 from positioning import (  # noqa: E402
     DIVERGENCE_TOL,
@@ -265,6 +272,36 @@ def test_dmi_parser_drops_future_padding() -> None:
     df = parse_dmi_csv(text)
     assert len(df) == 2
     assert df["date"].max() == pd.Timestamp("2026-05-01")
+
+
+def test_analogs_exclude_neighbours_and_rank_by_distance() -> None:
+    """Neighbouring months are near-duplicates and must not be returned as analogs.
+
+    Adjacent months share 6 of 7 trajectory features, so without the exclusion window the
+    "closest analog" to May 2026 is simply April 2026 — trivially true and useless. Also
+    checks every analog has a full forward window, since a match with no observed future
+    cannot answer the question being asked.
+    """
+    idx = pd.date_range("1950-01-01", "2020-12-01", freq="MS")
+    rng = np.random.default_rng(0)
+    oni = pd.Series(np.sin(np.arange(len(idx)) / 11.0) + rng.normal(0, 0.05, len(idx)),
+                    index=idx)
+    feats = pd.DataFrame({name: rng.normal(0, 1, len(idx)) for name in POINT_INDICES},
+                         index=idx)
+    states = state_matrix(oni, feats)
+
+    query = states.index[-1]
+    res = find_analogs(query, top_k=4, states=states, oni=oni)
+    dates = res["analog_date"].unique()
+
+    assert query not in dates, "the query month must never be its own analog"
+    for d in dates:
+        gap = abs((d.year - query.year) * 12 + (d.month - query.month))
+        assert gap > EXCLUDE_MONTHS, f"{d:%Y-%m} is inside the exclusion window"
+        assert d + pd.DateOffset(months=FORWARD_MONTHS) <= oni.index[-1]
+    # rank 1 must be the closest match
+    first = res[res["lead"] == 0].sort_values("rank")["distance"].to_list()
+    assert first == sorted(first), "ranks must be ordered by ascending distance"
 
 
 def test_methodology_doc_matches_code() -> None:

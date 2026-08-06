@@ -112,6 +112,11 @@ REGISTRY: tuple[Source, ...] = (
     Source("Causal verdicts (Granger+CCM)", "computed", "derived from ONI × Pink Sheet", 31,
            "landing_verdicts.parquet", "Dateless — vintage inherited from the ONI.",
            expected_lag_days=75, inherits="oni.parquet"),
+    Source("Analog months", "computed", "derived from ONI × ancillary indices", 31,
+           "analogs.parquet",
+           "Nearest historical states + the ONI path that followed each. Refuses to run "
+           "if the newest complete state vector lags the ONI by more than 3 months.",
+           expected_lag_days=75),
     Source("Positioning stances", "computed", "derived from ONI × prices × verdicts", 31,
            "positioning.parquet", "Recomputed monthly so a stance cannot go regime-stale.",
            expected_lag_days=75),
