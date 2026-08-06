@@ -42,3 +42,6 @@ data/raw/
 
 # NOTE: data/cache/*.parquet IS intentionally tracked (small, reproducible
 # snapshots that let the dashboard run without re-fetching). See README.
+
+# Claude plugin scratch DBs (healthcare/contracts caches) - never part of the project
+.claude/data/

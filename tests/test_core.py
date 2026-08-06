@@ -31,6 +31,14 @@ from lag_correlator import (  # noqa: E402
 )
 from granger_ccm import ccm_convergence  # noqa: E402
 from weekly_nino34 import parse_weekly  # noqa: E402
+from source_registry import Source, _status  # noqa: E402
+from positioning import (  # noqa: E402
+    DIVERGENCE_TOL,
+    IMPACT_FLOOR,
+    conviction,
+    regime_label,
+    stance,
+)
 from skill_metrics import acc, msss, rmse, skill_by_lead  # noqa: E402
 
 
@@ -159,6 +167,60 @@ def test_weekly_nino34_parses_runtogether_negative() -> None:
     assert df.iloc[0]["nino34_anom"] == -0.1   # the run-together case
     assert df.iloc[0]["nino34_sst"] == 26.8
     assert df.iloc[1]["nino34_anom"] == 2.2
+
+
+def test_stance_causal_gate_outranks_magnitude() -> None:
+    """A WEAK or untested causal verdict is capped at WATCH however big the impact.
+
+    This is the misattribution guard applied to the *prescription*. If it ever regresses,
+    the desk starts issuing directional views on links CCM could not confirm.
+    """
+    assert stance(2.0, "weak") == ("● WATCH", "watch")
+    assert stance(-2.0, "weak") == ("● WATCH", "watch")
+    assert stance(2.0, "untested") == ("● WATCH", "watch")
+    # A confirmed link still has to clear the noise floor.
+    assert stance(IMPACT_FLOOR / 2, "mod") == ("● WATCH", "watch")
+    # ...and only then does the sign of r_peak * state pick the direction.
+    assert stance(0.9, "mod")[0] == "▲ CONSTRUCTIVE"
+    assert stance(-0.9, "mod")[0] == "▼ CAUTIOUS"
+    assert stance(float("nan"), "mod") == ("● WATCH", "watch")
+
+
+def test_conviction_haircut_on_model_observation_split() -> None:
+    """Models disagreeing with the observation costs a notch; bounds stay 1..4."""
+    base = conviction(0.3, "mod", None)
+    assert conviction(0.3, "mod", DIVERGENCE_TOL + 0.5) == base - 1
+    assert conviction(0.3, "mod", DIVERGENCE_TOL - 0.5) == base   # inside tolerance
+    assert conviction(5.0, "strong", None) == 4                   # capped
+    assert conviction(0.0, "untested", 9.0) == 1                  # floored
+
+
+def test_regime_label_flags_trajectory_from_weekly() -> None:
+    """The ONI lags ~2.5 months; the live weekly says whether it is still moving."""
+    when = pd.Timestamp("2026-05-01")
+    assert regime_label(0.98, when) == "WEAK EL NIÑO · 2026"
+    assert regime_label(0.98, when, weekly=2.15).endswith("STRENGTHENING")
+    assert regime_label(0.98, when, weekly=1.0) == "WEAK EL NIÑO · 2026"  # gap < tol
+    assert regime_label(-1.2, when, weekly=-2.4).startswith("MODERATE LA NIÑA")
+    assert regime_label(0.1, when, weekly=0.2).startswith("NEUTRAL")
+
+
+def test_freshness_subtracts_structural_label_lag() -> None:
+    """A perfectly current ONI must NOT read stale just because of its centre-month label.
+
+    The ONI is a 3-month mean stored under its centre month, so an on-schedule value is
+    ~75 days old *by its own label*. Judging raw age against a 31-day cadence flags it
+    stale forever — which is exactly the false alarm this registry exists to prevent.
+    """
+    oni = Source("ONI", "feed", "u", 31, "oni.parquet", expected_lag_days=75)
+    assert _status(oni, 98 - 75) == "FRESH"     # on schedule
+    assert _status(oni, 98) == "STALE"          # what the naive raw-age check would say
+    assert _status(oni, 55) == "AGING"          # genuinely a publication late
+    # Deliberate cutoffs are decisions, not neglect — never STALE however old.
+    pink = Source("Pink Sheet", "snapshot", "u", None, "commodities.parquet")
+    assert _status(pink, 5_000) == "SNAPSHOT"
+    assert _status(Source("IMD", "static", "u", None, "m.parquet"), 9_999) == "STATIC"
+    assert _status(Source("X", "computed", "u", 31, "nope.parquet"), None) == "MISSING"
 
 
 def _run() -> None:

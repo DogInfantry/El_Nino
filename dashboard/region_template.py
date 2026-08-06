@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
+import pandas as pd
 import panel as pn
 import plotly.graph_objects as go
 
@@ -64,6 +65,11 @@ REGION_CSS = f"""
 .dv-inst {{ font-size:14px; font-weight:800; color:{COLORS['text']}; }}
 .dv-now {{ margin-top:9px; font-size:11.5px; color:{COLORS['text']}; background:#0e1626; border:1px solid {_LINE}; border-radius:8px; padding:7px 11px; }}
 .dv-now b {{ color:{COLORS['teal']}; }}
+.dv-comp {{ margin-top:8px; font-size:11px; color:{COLORS['muted']}; background:#0b1322; border:1px dashed rgba(138,148,166,0.28);
+  border-radius:8px; padding:7px 11px; line-height:1.55; }}
+.dv-comp b {{ color:{COLORS['text']}; }} .dv-comp .ck {{ font:700 8.5px ui-monospace,monospace; letter-spacing:.8px;
+  text-transform:uppercase; color:{COLORS['teal']}; margin-right:6px; }}
+.dv-ver {{ font:700 8px ui-monospace,monospace; color:{COLORS['muted']}; opacity:.75; margin-left:6px; }}
 .dv-cell {{ background:#0e1626; border:1px solid {_LINE}; border-radius:8px; padding:8px 11px; font-size:12px; color:{COLORS['muted']}; line-height:1.4; }}
 .dv-cell b {{ color:{COLORS['text']}; }} .dv-cell .ck {{ font:700 8.5px ui-monospace,monospace; letter-spacing:.8px; text-transform:uppercase; }}
 .dv-cell.cat .ck {{ color:{COLORS['teal']}; }} .dv-cell.risk .ck {{ color:{COLORS['el_nino']}; }}
@@ -124,15 +130,90 @@ def _thesis(cfg: RegionConfig) -> pn.pane.HTML:
     return pn.pane.HTML(f"<div class='rg-thesis'><b>Thesis:</b> {cfg.thesis}</div>")
 
 
-def _desk_view(cfg: RegionConfig) -> pn.pane.HTML:
+def stance_from_cache(iso3: str) -> dict | None:
+    """Computed stance row for a region, or ``None`` if unavailable.
+
+    Never raises. A region page must still build on a fresh clone, or on a Space deploy
+    that predates ``data/process/positioning.py`` — it just falls back to the typed
+    defaults in the page's own ``RegionConfig``.
+    """
+    try:
+        path = _ROOT / "data" / "cache" / "positioning.parquet"
+        if not path.exists():
+            return None
+        row = pd.read_parquet(path).query("iso3 == @iso3")
+        return None if row.empty else row.iloc[0].to_dict()
+    except Exception:  # noqa: BLE001 - never break a page build over a stance
+        return None
+
+
+_MAX_LAG = 24   # the lag_correlator search window; a peak here may lie outside it
+
+
+def _horizon_txt(lag: int) -> str:
+    """Render the peak lag honestly, including the two boundary cases.
+
+    lag 0 is contemporaneous, not "0 months away"; lag 24 sits on the edge of the search
+    window, so the true peak may be further out and the number should not be trusted as
+    a horizon. Both read as bugs if printed as a bare integer.
+    """
+    if lag <= 0:
+        return "contemporaneous"
+    if lag >= _MAX_LAG:
+        return f"{lag} mo (window edge)"
+    return f"{lag} mo"
+
+
+def _apply_stance(cfg: RegionConfig) -> dict | None:
+    """Overlay the computed stance onto the config's typed defaults.
+
+    Replaced (these go stale with the regime): ``regime``, the DESK VIEW badge, and the
+    sub-line. Kept (a formula cannot see them): ``instruments``, ``catalyst``, ``risk``
+    and ``engine_read`` — the latter carries genuine per-region analysis such as India's
+    fitted P(deficient monsoon).
+    """
+    s = stance_from_cache(cfg.iso3)
+    if not s:
+        return None
+    cfg.regime = str(s["regime"])
+    cfg.desk = {**cfg.desk, "badge": str(s["badge"]), "badge_cls": str(s["badge_cls"]),
+                "sub": (f"{s['verdict']} · conviction {int(s['conviction'])}/4 · "
+                        f"horizon {_horizon_txt(int(s['horizon_mo']))} · computed")}
+    return s
+
+
+def _stance_line(s: dict) -> str:
+    """The receipt: the numbers the badge was derived from, shown next to the badge."""
+    r, impact = float(s["r_peak"]), float(s["impact"])
+    direction = "higher" if r > 0 else "lower"
+    div = s.get("divergence")
+    div_txt = ""
+    if div is not None and not pd.isna(div):
+        div_txt = (f" Observed-minus-forecast <b>{float(div):+.2f} °C</b> — the models are "
+                   "under-calling the event; conviction is haircut when that gap exceeds 1.0.")
+    override = ""
+    if str(s.get("override_reason") or ""):
+        override = (f"<br><span style='color:{AMBER}'>MANUAL OVERRIDE</span> — "
+                    f"{s['override_reason']}")
+    return (
+        f"<div class='dv-comp'><span class='ck'>Computed stance</span> "
+        f"r<sub>peak</sub> <b>{r:+.2f}</b> at <b>{_horizon_txt(int(s['horizon_mo']))}</b> "
+        f"(warm ENSO → {direction} price) × ENSO state <b>{float(s['state']):+.2f}σ</b> "
+        f"⇒ impact <b>{impact:+.2f}</b>, gated by the causal verdict "
+        f"<b>{s['verdict']}</b>.{div_txt} <span class='dv-ver'>{s['stance_version']}</span>"
+        f"{override}</div>")
+
+
+def _desk_view(cfg: RegionConfig, s: dict | None = None) -> pn.pane.HTML:
     d = cfg.desk
+    computed = _stance_line(s) if s else ""
     return pn.pane.HTML(
         "<div class='dv'><div style='display:flex;align-items:center;gap:12px;flex-wrap:wrap'>"
         "<span class='dv-lab'>Desk view</span>"
         f"<span class='dv-badge {d.get('badge_cls', '')}'>{d['badge']}</span>"
         f"<span class='dv-inst'>{d['instruments']}</span>"
         f"<span class='dv-lab'>{d['sub']}</span></div>"
-        f"<div class='dv-now'>{d['engine_read']}</div>"
+        f"<div class='dv-now'>{d['engine_read']}</div>{computed}"
         "<div style='display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px'>"
         f"<div class='dv-cell cat'><span class='ck'>Catalyst</span> &nbsp;{d['catalyst']}</div>"
         f"<div class='dv-cell risk'><span class='ck'>Key risk</span> &nbsp;{d['risk']}</div></div></div>")
@@ -234,7 +315,12 @@ def _history_tab(cfg: RegionConfig) -> pn.viewable.Viewable:
 
 def build_region(cfg: RegionConfig, climate_view: pn.viewable.Viewable,
                  agri_view: pn.viewable.Viewable | None = None) -> pn.viewable.Viewable:
-    """Assemble a full region deep-dive. `climate_view` is the region-specific exhibit."""
+    """Assemble a full region deep-dive. `climate_view` is the region-specific exhibit.
+
+    The regime badge and DESK VIEW stance are overlaid from ``positioning.parquet`` when
+    it exists, so they track the ENSO cycle instead of the day they were typed.
+    """
+    stance = _apply_stance(cfg)
     hero = pn.Row(
         pn.Column(pn.pane.Plotly(_region_map(cfg), config={"displayModeBar": False},
                                  sizing_mode="stretch_width"), css_classes=["card"]),
@@ -254,7 +340,7 @@ def build_region(cfg: RegionConfig, climate_view: pn.viewable.Viewable,
         dynamic=True,
     )
     return pn.Column(
-        _bar(cfg), _thesis(cfg), _desk_view(cfg), pn.Spacer(height=10), hero,
+        _bar(cfg), _thesis(cfg), _desk_view(cfg, stance), pn.Spacer(height=10), hero,
         pn.Spacer(height=10), tabs, pn.pane.HTML(f"<div class='rg-foot'>{cfg.footer}</div>"),
         styles={"background": COLORS["bg"], "padding": "22px", "min-height": "100vh",
                 "max-width": "1180px", "margin": "0 auto"}, sizing_mode="stretch_width")

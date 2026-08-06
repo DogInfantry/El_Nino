@@ -47,6 +47,8 @@ STEPS = [
     ("Ensemble + skill",         "forecasting/ensemble.py"),
     ("Exposure index",           "data/process/exposure_index.py"),
     ("Landing causation verdicts", "data/process/landing_causation.py"),
+    # Must follow the verdicts: the causal gate caps a WEAK link at WATCH.
+    ("Positioning stances",       "data/process/positioning.py"),
     ("India ENSO x IOD engine",  "data/process/enso_flavor_iod.py"),
     ("Unit tests (sanity gate)", "tests/test_core.py"),
 ]
@@ -54,7 +56,7 @@ STEPS = [
 DATE_CACHES = [
     "oni.parquet", "roni.parquet", "enso_phases.parquet",
     "sst_anomaly_grids.parquet", "forecasts_all.parquet",
-    "weekly_nino34.parquet",
+    "weekly_nino34.parquet", "positioning.parquet",
 ]
 
 
