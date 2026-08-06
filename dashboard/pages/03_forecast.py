@@ -149,6 +149,84 @@ def build_skill_chart(skill: pd.DataFrame) -> go.Figure:
     return fig
 
 
+def build_analog_chart(df: pd.DataFrame) -> go.Figure:
+    """Every analog's forward ONI path, drawn individually.
+
+    Deliberately NOT a mean line with a band. The current analog set is bimodal — three
+    paths run to a strong event, two fade — and an average of those two outcomes is a
+    number that never happened and never will. Showing the paths shows the disagreement,
+    which is the actual information.
+    """
+    fig = go.Figure()
+    for rank in sorted(df["rank"].unique()):
+        g = df[df["rank"] == rank].sort_values("lead")
+        label = f"{g['analog_date'].iloc[0]:%b %Y}"
+        peak = float(g["oni_fwd"].max())
+        colour = COLORS["el_nino"] if peak >= 1.0 else COLORS["neutral"]
+        fig.add_trace(go.Scatter(
+            x=g["lead"], y=g["oni_fwd"], mode="lines+markers", name=label,
+            line=dict(color=colour, width=2.2), marker=dict(size=5),
+            hovertemplate=f"{label}<br>+%{{x}} mo: %{{y:+.2f}}<extra></extra>"))
+    for level in (0.5, -0.5):
+        fig.add_hline(y=level, line=dict(color="rgba(138,148,166,0.35)", dash="dot"))
+    style_figure(
+        fig, height=330, margin=dict(l=50, r=14, t=44, b=42),
+        title=dict(text="What followed each analog — ONI path after the matched month",
+                   font=dict(size=14)),
+        xaxis=dict(title="months after the analog"),
+        yaxis=dict(title="ONI (°C)"),
+        legend=dict(orientation="h", y=-0.24))
+    return fig
+
+
+def _analog_card() -> pn.viewable.Viewable:
+    """Analog panel, or a quiet note if the cache is absent. Never breaks the page."""
+    try:
+        import sys as _sys
+        _proc = Path(__file__).resolve().parents[2] / "data" / "process"
+        if str(_proc) not in _sys.path:
+            _sys.path.insert(0, str(_proc))
+        from analogs import ANALOG_VERSION, get_analogs
+        df = get_analogs()
+    except Exception as exc:  # noqa: BLE001
+        return pn.pane.HTML(
+            f"<div class='enso-note'>Analog engine unavailable ({exc}).</div>")
+    if df.empty:
+        return pn.pane.HTML("<div class='enso-note'>No analogs computed.</div>")
+
+    query = df["query_date"].iloc[0]
+    ends = df[df["lead"] == df["lead"].max()]
+    strong = int((df.groupby("rank")["oni_fwd"].max() >= 1.0).sum())
+    total = df["rank"].nunique()
+    rows = "".join(
+        f"<tr><td>#{int(r['rank'])}</td><td><b>{r['analog_date']:%b %Y}</b></td>"
+        f"<td>d={r['distance']:.2f}</td>"
+        f"<td>{float(df[(df['rank'] == r['rank']) & (df['lead'] == 6)]['oni_fwd'].iloc[0]):+.2f}</td>"
+        f"<td>{float(r['oni_fwd']):+.2f}</td></tr>"
+        for _, r in ends.sort_values("rank").iterrows())
+    table = (
+        "<table style='width:100%;border-collapse:collapse;font-size:11.5px'>"
+        "<tr style='color:#8a94a6;font:700 9px ui-monospace,monospace;"
+        "letter-spacing:.7px;text-transform:uppercase'><th align='left'>Rank</th>"
+        "<th align='left'>Analog month</th><th align='left'>Distance</th>"
+        "<th align='left'>+6 mo</th><th align='left'>+12 mo</th></tr>" + rows + "</table>")
+
+    note = pn.pane.HTML(
+        f"<div class='enso-note'><b>Analogs for {query:%b %Y}.</b> The five closest "
+        "historical states, ranked by Euclidean distance over the ONI trajectory "
+        "(t−6…t), the Niño 1+2/3/4 pattern, SOI and DMI — all z-scored. "
+        f"<b>{strong} of {total}</b> went on to reach ONI ≥ +1.0; the rest faded. That "
+        "split is the point: the mean of a bimodal set is an outcome that never occurred, "
+        "so the paths are drawn individually rather than averaged. Neighbouring months are "
+        "excluded (they share most of their trajectory), and every analog has a full "
+        f"12-month observed future. <span style='opacity:.7'>{ANALOG_VERSION}</span>"
+        f"<div style='margin-top:9px'>{table}</div></div>")
+    chart = pn.pane.Plotly(build_analog_chart(df), config={"displayModeBar": False},
+                           sizing_mode="stretch_width")
+    return pn.Row(pn.Column(chart, css_classes=["enso-card"]), note,
+                  sizing_mode="stretch_width")
+
+
 def build_app() -> pn.viewable.Viewable:
     history = load_oni()[["date", "oni"]]
     forecasts = pd.read_parquet(CACHE_DIR / "forecasts_all.parquet")
@@ -200,7 +278,7 @@ def build_app() -> pn.viewable.Viewable:
         header, pn.Spacer(height=8),
         pn.Column(fan, css_classes=["enso-card"]), pn.Spacer(height=8),
         pn.Column(skl, css_classes=["enso-card"]), pn.Spacer(height=8),
-        nowcast, pn.Spacer(height=8), warn,
+        nowcast, pn.Spacer(height=8), _analog_card(), pn.Spacer(height=8), warn,
         styles={"background": COLORS["bg"], "padding": "22px",
                 "min-height": "100vh", "max-width": "1500px", "margin": "0 auto"})
 
