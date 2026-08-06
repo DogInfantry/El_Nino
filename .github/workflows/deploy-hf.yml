@@ -19,6 +19,8 @@ on:
       - "data/cache/**"
       - "data/process/**"
       - "data/ingest/**"
+      # Page 09 renders docs/METHODOLOGY.md at runtime, so the Space needs it.
+      - "docs/**"
       - "app.py"
       - "Dockerfile"
       - "requirements-space.txt"
@@ -64,6 +66,8 @@ jobs:
               ("data/cache", "data/cache", None),
               ("data/process", "data/process", ignore),
               ("data/ingest", "data/ingest", ignore),
+              # Page 09 reads METHODOLOGY.md at runtime rather than restating it.
+              ("docs", "docs", None),
           ]:
               api.upload_folder(repo_id=REPO, repo_type="space",
                                 folder_path=folder, path_in_repo=dest,
