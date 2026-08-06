@@ -73,10 +73,12 @@ IMPACT_FLOOR = 0.25
 IMPACT_STRONG = 0.60
 # Observed-minus-forecast gap (degC) that costs a conviction notch.
 DIVERGENCE_TOL = 1.0
-# Conviction seed by causal verdict class.
-_CONVICTION_SEED = {"strong": 4, "mod": 3, "weak": 2, "untested": 1}
+# Conviction seed by causal verdict class. Keys MUST match the classes emitted by
+# landing_causation._verdict: causal | mod | weak | none  (+ untested, ours, for a
+# commodity with no verdict row at all).
+_CONVICTION_SEED = {"causal": 4, "mod": 3, "weak": 2, "none": 1, "untested": 1}
 # Verdict classes allowed to carry a directional view at all.
-_DIRECTIONAL_CLS = ("mod", "strong")
+_DIRECTIONAL_CLS = ("causal", "mod")
 
 # Registry commodity (Pink Sheet name) -> the row name used in landing_verdicts.parquet.
 # Anything unmapped is treated as UNTESTED, which caps the stance at WATCH by design.

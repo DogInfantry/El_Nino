@@ -37,6 +37,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CACHE_DIR = PROJECT_ROOT / "data" / "cache"
 C_FULL_SCALE = 0.45   # |r| that maps to C = 1.0
 
+# Bump on ANY change to the weights, the scale, or a REGISTRY row, and add a changelog
+# entry in docs/METHODOLOGY.md. A test enforces that the doc quotes this exact string.
+EXPOSURE_VERSION = "exposure-v1 (2026-08-07)"
+
 # (iso3, country, dominant Pink-Sheet commodity, E [0-1 curated], sign)
 REGISTRY: list[tuple[str, str, str, float, str]] = [
     ("CIV", "Côte d'Ivoire", "Cocoa", 0.90, "dry"),

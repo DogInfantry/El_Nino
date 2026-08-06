@@ -32,9 +32,11 @@ from lag_correlator import (  # noqa: E402
 from granger_ccm import ccm_convergence  # noqa: E402
 from weekly_nino34 import parse_weekly  # noqa: E402
 from source_registry import Source, _status  # noqa: E402
+from exposure_index import EXPOSURE_VERSION, REGISTRY  # noqa: E402
 from positioning import (  # noqa: E402
     DIVERGENCE_TOL,
     IMPACT_FLOOR,
+    STANCE_VERSION,
     conviction,
     regime_label,
     stance,
@@ -178,6 +180,10 @@ def test_stance_causal_gate_outranks_magnitude() -> None:
     assert stance(2.0, "weak") == ("● WATCH", "watch")
     assert stance(-2.0, "weak") == ("● WATCH", "watch")
     assert stance(2.0, "untested") == ("● WATCH", "watch")
+    assert stance(2.0, "none") == ("● WATCH", "watch")
+    # ...but a CAUSAL link must be allowed through. landing_causation emits "causal",
+    # not "strong" — gating on the wrong literal silently muzzles the best links.
+    assert stance(0.9, "causal")[0] == "▲ CONSTRUCTIVE"
     # A confirmed link still has to clear the noise floor.
     assert stance(IMPACT_FLOOR / 2, "mod") == ("● WATCH", "watch")
     # ...and only then does the sign of r_peak * state pick the direction.
@@ -191,7 +197,7 @@ def test_conviction_haircut_on_model_observation_split() -> None:
     base = conviction(0.3, "mod", None)
     assert conviction(0.3, "mod", DIVERGENCE_TOL + 0.5) == base - 1
     assert conviction(0.3, "mod", DIVERGENCE_TOL - 0.5) == base   # inside tolerance
-    assert conviction(5.0, "strong", None) == 4                   # capped
+    assert conviction(5.0, "causal", None) == 4                   # capped
     assert conviction(0.0, "untested", 9.0) == 1                  # floored
 
 
@@ -221,6 +227,24 @@ def test_freshness_subtracts_structural_label_lag() -> None:
     assert _status(pink, 5_000) == "SNAPSHOT"
     assert _status(Source("IMD", "static", "u", None, "m.parquet"), 9_999) == "STATIC"
     assert _status(Source("X", "computed", "u", 31, "nope.parquet"), None) == "MISSING"
+
+
+def test_methodology_doc_matches_code() -> None:
+    """The published methodology may not silently drift from the code it describes.
+
+    Weights and thresholds are only credible if the document is provably in sync, so this
+    fails when a registry row is added without documenting it, or when a version constant
+    is bumped without a changelog entry quoting it.
+    """
+    doc = (_ROOT / "docs" / "METHODOLOGY.md").read_text(encoding="utf-8")
+    for iso3, name, commodity, _e, _sign in REGISTRY:
+        assert iso3 in doc, f"{iso3} ({name}, {commodity}) missing from METHODOLOGY.md"
+    assert EXPOSURE_VERSION in doc, "METHODOLOGY.md does not quote the current EXPOSURE_VERSION"
+    assert STANCE_VERSION in doc, "METHODOLOGY.md does not quote the current STANCE_VERSION"
+    # Every verdict class the gate can receive must be documented, so a reader can tell
+    # which links are allowed to carry a direction.
+    for cls in ("CAUSAL", "MODERATE", "WEAK", "NONE"):
+        assert cls in doc, f"verdict class {cls} undocumented"
 
 
 def _run() -> None:
