@@ -46,6 +46,11 @@ STEPS = [
     ("Commodities (Pink Sheet — snapshot still ends 2024-12)", "data/ingest/pink_sheet.py"),
     ("SARIMA forecast+backtest", "forecasting/baselines/arima_model.py"),
     ("LSTM forecast+backtest (slow, torch)", "forecasting/ml_models/lstm_enso.py"),
+    # Paired input-width experiment, not an ensemble member. Runs after the member so a
+    # --no-lstm refresh skips both (the filename carries "lstm" for exactly that reason)
+    # and never leaves a variant comparison scored against a different ONI vintage.
+    ("LSTM exogenous-channel comparison (slow, torch)",
+     "forecasting/ml_models/lstm_exog.py"),
     ("Ensemble + skill",         "forecasting/ensemble.py"),
     ("Exposure index",           "data/process/exposure_index.py"),
     ("Landing causation verdicts", "data/process/landing_causation.py"),

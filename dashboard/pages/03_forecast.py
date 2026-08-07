@@ -149,6 +149,74 @@ def build_skill_chart(skill: pd.DataFrame) -> go.Figure:
     return fig
 
 
+def build_variant_chart(df: pd.DataFrame) -> go.Figure:
+    """Does giving the LSTM other climate indices help? Only past the spring barrier.
+
+    Both arms trained on the identical span, split, seed and epoch budget — the extra
+    indices only start in 1951, so scoring a multivariate model against the production
+    1950-start run would have compared two different training sets and called the
+    difference a channel effect. Only the input width varies here.
+    """
+    fig = go.Figure()
+    fig.add_hline(y=0.5, line=dict(color="rgba(138,148,166,0.4)", width=1, dash="dash"),
+                  annotation_text="useful-skill 0.5", annotation_position="right",
+                  annotation_font_color=COLORS["muted"], annotation_font_size=10)
+    styling = {
+        "univariate": (COLORS["muted"], "ONI only"),
+        "multivariate": (COLORS["teal"], "ONI + 7 indices"),
+    }
+    for variant, grp in df.groupby("variant"):
+        colour, label = styling.get(variant, (COLORS["muted"], variant))
+        grp = grp.sort_values("lead")
+        fig.add_trace(go.Scatter(
+            x=grp["lead"], y=grp["acc"], mode="lines+markers", name=label,
+            line=dict(color=colour, width=2.2),
+            hovertemplate=label + " lead %{x}mo<br>ACC %{y:.3f}<extra></extra>"))
+    style_figure(fig, height=300, title=dict(
+        text="Does the LSTM improve with more channels? — paired, identical span & seed",
+        font=dict(size=15)),
+        yaxis=dict(title="Anomaly correlation (ACC)", range=[0, 1.02],
+                   gridcolor="rgba(138,148,166,0.12)"),
+        xaxis=dict(title="Lead (months)", dtick=1, gridcolor="rgba(138,148,166,0.08)"),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0))
+    return fig
+
+
+def _variant_card() -> pn.viewable.Viewable:
+    """The channel experiment, with the result stated rather than left to the eye."""
+    path = CACHE_DIR / "skill_variants.parquet"
+    if not path.exists():
+        return pn.pane.HTML(
+            "<div class='enso-note'>Channel comparison not built — run "
+            "<code>forecasting/ml_models/lstm_exog.py</code>.</div>")
+
+    df = pd.read_parquet(path)
+    acc = df.pivot(index="lead", columns="variant", values="acc")
+    delta = acc["multivariate"] - acc["univariate"]
+    short = delta.loc[1:4].mean()
+    long = delta.loc[5:12].mean()
+    crosses = acc.max(axis=1).gt(0.5)
+    last_useful = int(crosses[crosses].index.max()) if crosses.any() else 0
+
+    chart = pn.pane.Plotly(build_variant_chart(df),
+                           config={"displayModeBar": True}, sizing_mode="stretch_width")
+    note = pn.pane.HTML(
+        "<div class='enso-note'><b>The extra channels do not rescue the LSTM — they "
+        "move where its skill sits.</b> Feeding it Niño-1+2/3/4, SOI, DMI, PNA and WP "
+        f"<i>costs</i> ACC across leads 1–4 ({short:+.3f} mean), where ONI persistence "
+        "already carries the forecast and the extra inputs are mostly noise. From lead 5 "
+        f"out it gains ({long:+.3f} mean), holding ACC near 0.34–0.41 through months "
+        "8–12 while the ONI-only control collapses towards zero — the range past the "
+        "spring predictability barrier. Read it as a real but <b>sub-threshold</b> "
+        f"signal: nothing beyond lead {last_useful} clears the 0.5 useful-skill line in "
+        "<i>either</i> arm, so this does not extend the usable horizon and does not "
+        "change which model the ensemble averages. PDO and TNI are excluded — both run "
+        "months behind, and the forward window needs every channel complete.</div>",
+        sizing_mode="stretch_width")
+    return pn.Row(pn.Column(chart, css_classes=["enso-card"]), note,
+                  sizing_mode="stretch_width")
+
+
 def build_analog_chart(df: pd.DataFrame) -> go.Figure:
     """Every analog's forward ONI path, drawn individually.
 
@@ -278,7 +346,8 @@ def build_app() -> pn.viewable.Viewable:
         header, pn.Spacer(height=8),
         pn.Column(fan, css_classes=["enso-card"]), pn.Spacer(height=8),
         pn.Column(skl, css_classes=["enso-card"]), pn.Spacer(height=8),
-        nowcast, pn.Spacer(height=8), _analog_card(), pn.Spacer(height=8), warn,
+        nowcast, pn.Spacer(height=8), _analog_card(), pn.Spacer(height=8),
+        _variant_card(), pn.Spacer(height=8), warn,
         styles={"background": COLORS["bg"], "padding": "22px",
                 "min-height": "100vh", "max-width": "1500px", "margin": "0 auto"})
 
