@@ -7,7 +7,8 @@ Run with::
 Generic shell (bar / DESK VIEW / map / KPI rail / Economics=live Granger+CCM / History)
 comes from ``dashboard/region_template.py``. India contributes a thin ``RegionConfig`` and
 its own **Climate** exhibit — the computed ENSO×IOD scenario matrix + OLS regression
-(n=117, from ERSSTv5 + IMD; caches built by ``data/process/enso_flavor_iod.py``).
+(from ERSSTv5 + IMD gridded rainfall; caches built by ``data/process/enso_flavor_iod.py``,
+which now reports the sample size rather than the page hard-coding it).
 
 Other regions clone this file: new config + a (usually simpler) climate view.
 """
@@ -135,9 +136,11 @@ CFG = RegionConfig(
         ("2023–24", "+2.0", "mid", "−6%", "Rice export ban; sugar curbs → global ripple")],
     econ_takeaway=("<b>The price link is causal and lagged ~7mo</b> — position during the monsoon "
                    "season, ahead of the Q4 price response."),
-    footer=("<b>Sources:</b> ENSO/IOD computed from ERSSTv5 · monsoon = IMD 36-subdivision JJAS "
-            "(1901–2017, r=0.77 vs official AISMR) · prices — World Bank Pink Sheet · causation — "
-            "in-repo Granger+CCM. &nbsp;<b>Caveat:</b> El Niño-cell n is small (~20 events); the n=117 "
+    footer=("<b>Sources:</b> ENSO/IOD computed from ERSSTv5 · monsoon = IMD <b>0.25° gridded</b> "
+            "JJAS, area-weighted by cos(lat), 1950–2024 (1971–2020 normal 858.9 mm vs IMD's "
+            "published ~868 mm; it approximates the official all-India series, it does not "
+            "reproduce it) · prices — World Bank Pink Sheet · causation — in-repo Granger+CCM. "
+            f"&nbsp;<b>Caveat:</b> El Niño-cell n is small (~20 events); the n={int(REG['n'])} "
             "regression carries the significance. Not investment advice."),
 )
 

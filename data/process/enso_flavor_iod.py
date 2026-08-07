@@ -160,6 +160,34 @@ def analyse(tbl: pd.DataFrame) -> None:
           f"  -> {y15['outcome']} ({y15['monsoon_pct']:+d}%)")
 
 
+# DEFICIENT / Normal / EXCESS cut, matching monsoon_fetcher so the two series stay
+# directly comparable when the gridded cache is absent.
+_CATEGORY_BINS = [-100, -10, 10, 1000]
+_CATEGORY_LABELS = ["DEFICIENT", "Normal", "EXCESS"]
+
+
+def _monsoon_series() -> pd.DataFrame:
+    """All-India JJAS departures: the gridded product when available, else subdivisions.
+
+    The gridded series is area-weighted by cos(lat) and its 1971-2020 normal lands within
+    1.1% of IMD's published ~868 mm, where the unweighted subdivision mean sits ~20% high.
+    It also runs to 2024 rather than 2017. But it needs a ~1.9 GB manual download, so a
+    fresh clone will not have it — falling back keeps this engine runnable rather than
+    making the whole India analysis contingent on a bulk fetch.
+    """
+    grid_path = CACHE_DIR / "monsoon_india_grid.parquet"
+    if grid_path.exists():
+        g = pd.read_parquet(grid_path)
+        g = g[g["region"] == "All-India"][["year", "jjas_mm", "lpa_pct"]].copy()
+        g["category"] = pd.cut(g["lpa_pct"], bins=_CATEGORY_BINS,
+                               labels=_CATEGORY_LABELS).astype(str)
+        g.attrs["source"] = "imd_gridded_0p25_area_weighted"
+        return g.sort_values("year").reset_index(drop=True)
+    mon = pd.read_parquet(CACHE_DIR / "monsoon_india.parquet")
+    mon.attrs["source"] = "imd_subdivision_unweighted"
+    return mon
+
+
 def scenario_outputs() -> dict:
     """Full-sample (n~117) analysis — returns data (no printing) for the dashboard.
 
@@ -167,7 +195,7 @@ def scenario_outputs() -> dict:
     test regresses the monsoon on concurrent ENSO and IOD across ALL years.
     Returns dict(reg=<coef/p/R² dict>, grid=<long ENSO×IOD P(deficient) df>, years=df).
     """
-    mon = pd.read_parquet(CACHE_DIR / "monsoon_india.parquet")
+    mon = _monsoon_series()
     df = monthly_indices()
     lut = df.set_index(["y", "mo"])
     rows = [dict(year=int(yr),
