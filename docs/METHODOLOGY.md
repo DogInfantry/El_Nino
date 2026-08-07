@@ -187,13 +187,36 @@ a snapshot of the committed cache, and the live values are on the desk itself.
 
 ### India monsoon: how well the gridded series validates
 
+Coverage: **1901–2024**, 124 years, area-weighted by cos(lat).
+
 | Check | Result |
 |---|---|
 | 1971–2020 all-India normal | **858.9 mm** vs IMD's published ~868 mm (within 1.1%) |
 | Old unweighted subdivision mean | ~1045 mm — about 20% too high |
-| Year-to-year agreement with the subdivision series | **r = 0.945** (n = 68, 1950–2017) |
+| Year-to-year agreement with the subdivision series | **r = 0.945** |
+| Driest years on record | 1972 (−22.5%), 1918 (−21.8%), 2002 (−18.9%) — the canonical ones |
 | 1972 drought | −22.5% here vs ~−24% cited |
 | 2009 drought | −15.0% here vs ~−22% cited |
+
+**The record length changed a conclusion.** An initial 1950 cutoff was chosen on the
+reasoning that pre-1950 years have no ONI to pair with — but the India regression uses
+ERSSTv5-derived Niño-3.4 and DMI, which run back to 1854, so the cutoff discarded usable
+sample. At n = 75 the IOD coefficient sat at p = 0.059 and read as marginal; over the full
+n = 124 it is **p = 0.0037**. The India desk view leans on an "IOD hedge", and at the
+shorter sample that lean was not supported. Backfilling ~1.2 GB bought a conclusion that
+was otherwise unavailable.
+
+Full-sample OLS, monsoon % departure on concurrent JJAS ENSO and IOD (n = 124):
+
+| Term | Coefficient | p | 
+|---|---|---|
+| Niño-3.4 | −8.01 | < 0.0001 |
+| DMI (IOD) | +5.26 | 0.0037 |
+| R² | 0.35 | |
+
+P(deficient monsoon) under El Niño is monotonic in the IOD: **1.00** with a negative IOD,
+**0.80** neutral, **0.43** positive. A positive IOD roughly halves it. Cell counts are still
+small (~20 El Niño events), so the regression, not the 3×3 grid, carries the significance.
 
 Averaging 36 subdivisions equally over-weights small very wet ones (the north-east, the
 Konkan coast); cos(lat) area weighting removes that bias, which is what the old r = 0.77

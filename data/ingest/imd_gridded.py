@@ -9,7 +9,8 @@ to keep apologising for, and eight years out of date.
 
 This replaces it at the source. IMD's 0.25° × 0.25° daily gridded rainfall runs 1901–2024
 on a 135 × 129 grid (6.5–38.5 N, 66.5–100 E), and an area-weighted mean over it *is* the
-quantity the subdivision average was approximating — and it reaches 2024 instead of 2017.
+quantity the subdivision average was approximating — over the same 1901 start, and reaching
+2024 instead of 2017.
 
 How well it validates, stated plainly
 -------------------------------------
@@ -18,8 +19,10 @@ How well it validates, stated plainly
   ~1045 mm, ~20% too high, because averaging subdivisions equally over-weights small very
   wet ones (the north-east, the Konkan coast). That bias is the r = 0.77 caveat, and area
   weighting is what removes it.
-- **Year-to-year: very good.** r = **0.945** against the subdivision series over the 68
-  overlapping years (1950–2017) — two independent constructions agreeing.
+- **Year-to-year: very good.** r = **0.945** against the subdivision series over the
+  overlapping years — two independent constructions agreeing.
+- **Historic droughts land where they should.** The driest years on the area-weighted
+  record are 1972 (−22.5%), 1918 (−21.8%) and 2002 (−18.9%) — the canonical ones.
 - **Individual extremes: close, not identical.** 1972 reads −22.5% here against a cited
   ~−24%, but 2009 reads −15.0% against a cited ~−22%. IMD's headline "country as a whole"
   figure uses subdivision-area weights over its own subdivision set, which is not the same
@@ -43,9 +46,10 @@ valid cells only, so the ocean and the missing-data mask never enter the mean.
 
 Cost and cadence
 ----------------
-**Run manually, never in CI.** 1950–2024 is ~75 yearly binaries (~1.9 GB); the raw download
+**Run manually, never in CI.** 1901–2024 is 124 yearly binaries (~3 GB); the raw download
 lives in the gitignored ``data/raw/imd/`` and only the small aggregate parquet is committed.
 IMD publishes annually, so this is a once-a-year job, deliberately outside the monthly cron.
+Re-runs are cheap: ``--offline`` rebuilds from whatever is already in ``data/raw/imd``.
 
 Regions
 -------
@@ -79,8 +83,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RAW_DIR = PROJECT_ROOT / "data" / "raw" / "imd"
 CACHE_NAME = "monsoon_india_grid.parquet"
 
-START_YEAR, END_YEAR = 1950, 2024      # 1950 matches the ONI record; earlier years would
-                                       # only serve climatology and cost ~1 GB more.
+# Full record. An earlier 1950 cutoff was chosen on the reasoning that pre-1950 years have
+# no ONI to pair with — but the India regression uses ERSSTv5-derived Niño-3.4 and DMI,
+# which run back to 1854, so that cutoff threw away usable sample. It mattered: at n=75 the
+# IOD term sat at p=0.059 and looked marginal; over the full 1901-2024 record (n=124) it is
+# p=0.0037. The extra ~1.2 GB bought a conclusion that was otherwise unavailable.
+START_YEAR, END_YEAR = 1901, 2024
 JJAS = (6, 7, 8, 9)
 MISSING = -999.0
 # IMD's current official normal period. Departures must be measured against a FIXED
