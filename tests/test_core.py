@@ -379,6 +379,84 @@ def test_api_loaders_emit_strict_json() -> None:
         assert payload not in ([], {}, None), f"endpoint {name} returned nothing"
 
 
+def test_phase_randomize_preserves_spectrum() -> None:
+    """The surrogate must keep the power spectrum and destroy only the phases.
+
+    If it altered the amplitude spectrum it would no longer be a null for *this* series
+    — the comparison would silently become "coupled series vs some other series", and a
+    link could pass simply by being smoother than its own surrogates. The DC and Nyquist
+    bins are real-valued, so rotating them would leak an imaginary component back into
+    a signal that must stay real.
+    """
+    from granger_ccm import phase_randomize
+
+    rng = np.random.default_rng(7)
+    for n in (256, 257):  # even and odd: the Nyquist bin only exists for even n
+        x = np.cumsum(rng.normal(size=n)) + 3 * np.sin(np.arange(n) * 2 * np.pi / 12)
+        s = phase_randomize(x, rng)
+        assert len(s) == n
+        assert np.isrealobj(s), f"surrogate went complex at n={n}"
+        assert np.allclose(np.abs(np.fft.rfft(x)), np.abs(np.fft.rfft(s)), rtol=1e-8), (
+            f"amplitude spectrum not preserved at n={n}"
+        )
+        assert not np.allclose(x, s), f"surrogate is the input unchanged at n={n}"
+
+
+def test_ccm_surrogate_separates_coupling_from_shared_seasonality() -> None:
+    """The whole point: high rho on two smooth seasonal series is not evidence.
+
+    Two INDEPENDENT sine-plus-noise series cross-map at rho ~0.8 purely because they are
+    smooth and share a period. Without this null the bare rho >= 0.30 threshold was
+    partly measuring smoothness, which is how a spurious link earns a causal badge. The
+    coupled case must stay significant, or the test is just rejecting everything.
+    """
+    from granger_ccm import ccm_surrogate_test
+
+    idx = pd.date_range("1950-01-01", periods=600, freq="MS")
+    x = np.zeros(600); y = np.zeros(600); x[0], y[0] = 0.4, 0.2
+    for i in range(599):  # coupled logistic map: x drives y
+        x[i + 1] = x[i] * (3.8 - 3.8 * x[i])
+        y[i + 1] = y[i] * (3.5 - 3.5 * y[i] - 0.35 * x[i])
+    coupled = ccm_surrogate_test(pd.Series(x, index=idx), pd.Series(y, index=idx),
+                                 n_surrogates=60)
+    assert coupled["p_value"] < 0.05, f"genuine coupling rejected: {coupled}"
+
+    rng = np.random.default_rng(3)
+    season = np.sin(np.arange(600) * 2 * np.pi / 12)
+    a = pd.Series(season + rng.normal(0, 0.3, 600), index=idx)
+    b = pd.Series(season + rng.normal(0, 0.3, 600), index=idx)
+    spurious = ccm_surrogate_test(a, b, n_surrogates=60)
+    assert spurious["rho_obs"] > 0.5, "the trap only matters if raw rho looks convincing"
+    assert spurious["p_value"] > 0.05, f"shared seasonality passed as causal: {spurious}"
+
+
+def test_verdict_requires_beating_the_surrogate_null() -> None:
+    """A link that cannot beat its null is capped at WEAK regardless of rho.
+
+    And an ABSENT test must not open the gate: if the surrogate pass is skipped or errors
+    out, p is NaN, and a naive ``p < ALPHA`` on NaN is False — but a naive ``not p >= ALPHA``
+    would be True and would promote silently. This pins the safe direction.
+    """
+    sys.path.insert(0, str(_ROOT / "data" / "process"))
+    from landing_causation import _verdict
+
+    g = pd.DataFrame({"lag": range(1, 25), "f_stat": [5.0] * 24, "p_value": [0.001] * 24})
+    ccm = pd.DataFrame({
+        "lib_size": [20, 200, 900] * 2,
+        "rho": [0.10, 0.30, 0.45, 0.05, 0.06, 0.07],
+        "direction": ["ONI->target"] * 3 + ["target->ONI"] * 3,
+    })
+    strong = {"p_value": 0.002, "null_mean": 0.10, "n_surrogates": 500}
+    assert _verdict(g, ccm, strong)[1] == "causal", "a significant link should pass"
+
+    failed = {"p_value": 0.40, "null_mean": 0.44, "n_surrogates": 500}
+    assert _verdict(g, ccm, failed)[1] == "weak", "rho 0.45 inside its null must not pass"
+
+    untested = {"p_value": float("nan"), "null_mean": float("nan"), "n_surrogates": 0}
+    assert _verdict(g, ccm, untested)[1] == "weak", "a NaN p-value must not open the gate"
+    assert _verdict(g, ccm, None)[1] == "weak", "no surrogate dict must not open the gate"
+
+
 def _run() -> None:
     tests = [v for k, v in globals().items() if k.startswith("test_")]
     for t in tests:

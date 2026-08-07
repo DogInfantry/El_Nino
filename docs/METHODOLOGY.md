@@ -19,9 +19,10 @@ advice. The stances are formula outputs over one correlation and one causal test
 here has been validated against realised P&L, and no claim of predictive skill is made for
 the positioning layer.
 
-The honest headline from our own data: **most ENSO → commodity-*price* links do not survive
-causal testing.** Of six tested links, none is CAUSAL; two are MODERATE and the rest are
-WEAK · confounded. The clean, strong ENSO signal lives on the climate and production side
+The honest headline from our own data: **ENSO → commodity-*price* links do not survive
+causal testing.** Of six tested links, **none** clears the bar — all six are WEAK ·
+confounded once cross-map skill is measured against a phase-randomized null that preserves
+each series' own seasonality. The clean, strong ENSO signal lives on the climate and production side
 (monsoon rainfall, Maritime Continent drought), not in noisy monthly prices. Any page that
 implied otherwise would be selling a story the data does not support.
 
@@ -89,16 +90,48 @@ null) plus self-coded Convergent Cross Mapping, both at `maxlag = 24`, `α = 0.0
 `sig` = the count of lags with `p < α`; `converges` = forward CCM skill rising with library
 size; `rho_end` = forward `ρ` at the largest library.
 
+### Surrogate significance (added 2026-08-07)
+
+A raw `ρ` is not evidence. Cross-map skill is high between **any** two smooth, seasonal
+series, coupled or not — two independent sine-plus-noise series sharing only an annual
+cycle score `ρ ≈ 0.83` in this engine. A bare `rho_end ≥ 0.30` threshold was therefore
+measuring smoothness as much as coupling.
+
+Each link's forward `ρ` is now tested against **500 phase-randomized (Ebisuzaki)
+surrogates** of the ONI. The surrogate preserves the amplitude spectrum exactly — the
+annual cycle, the persistence and the smoothness all survive — and randomizes only the
+Fourier phases, destroying the phase-locking that carries coupling. Skill that beats that
+null is skill shared seasonality cannot explain.
+
+`p` is one-sided, `(k+1)/(n+1)` where `k` counts surrogates scoring at least the observed
+`ρ`. That form can never report `p = 0`, which a finite ensemble cannot justify. Only the
+ONI→target direction at the largest library is tested — that is the number the verdict
+rests on.
+
 | Verdict | Rule |
 |---|---|
-| `CAUSAL` | `sig ≥ 3` **and** converges **and** `rho_end ≥ 0.30` |
-| `MODERATE` | `sig ≥ 3` **and** converges |
+| `CAUSAL` | `sig ≥ 3` **and** converges **and** `rho_end ≥ 0.30` **and** `p < α` |
+| `MODERATE` | `sig ≥ 3` **and** converges **and** `p < α` |
 | `WEAK · confounded` | `sig ≥ 2` **or** converges |
 | `NONE` | otherwise |
 
-Current results: Palm oil MODERATE, Wheat MODERATE, Sugar / Soybeans / Cocoa / Robusta
-WEAK · confounded, none CAUSAL. Granger over-detects (palm fires on 13 of 24 lags) and CCM
-declines to confirm it — which is the whole reason both tests are run.
+An untested link does not pass. A missing or failed surrogate run leaves `p = NaN`, and the
+gate treats that as failure, so a silent error downgrades rather than promotes.
+
+**Current results: none of the six links survives — every one is `WEAK · confounded`.**
+Palm oil and Wheat were `MODERATE` before the surrogate gate and no longer are (`p = 0.152`
+and `p = 0.473`). The most instructive case is Robusta: it carries the **highest** raw
+`ρ = 0.32` on the board and the **worst** `p = 0.976`, against a null averaging `ρ = 0.23`
+on its own — the number previously quoted as this desk's strongest causal evidence is
+indistinguishable from chance. Only Soybeans beats its null (`p = 0.020`), and it fails
+Granger entirely (0 of 24 lags), so it stays `WEAK`.
+
+Granger over-detects (palm fires on 13 of 24 lags), CCM declines to confirm it, and the
+surrogate test now declines to confirm CCM — which is the whole reason all three are run.
+
+The live explorer on page 05 does **not** run surrogates: 500 extra cross-map passes per
+commodity is a precompute cost, not a page-load cost. Its verdicts use the pre-surrogate
+rules and are exploratory; the landing strip carries the gated ones.
 
 ---
 
@@ -134,9 +167,9 @@ ignore that disagreement.
 
 | iso3 | Commodity | r_peak | Lag | Impact | Verdict | Stance | Conv. |
 |---|---|---|---|---|---|---|---|
-| AUS | Wheat, US HRW | −0.270 | 4 mo | −0.397 | MODERATE | ▼ CAUTIOUS | 2/4 |
-| MYS | Palm oil | −0.259 | contemp. | −0.306 | MODERATE | ▼ CAUTIOUS | 2/4 |
-| IDN | Palm oil | −0.259 | contemp. | −0.306 | MODERATE | ▼ CAUTIOUS | 2/4 |
+| AUS | Wheat, US HRW | −0.270 | 4 mo | −0.397 | WEAK | ● WATCH | 1/4 |
+| MYS | Palm oil | −0.259 | contemp. | −0.306 | WEAK | ● WATCH | 1/4 |
+| IDN | Palm oil | −0.259 | contemp. | −0.306 | WEAK | ● WATCH | 1/4 |
 | ARG | Soybeans | −0.173 | contemp. | −0.204 | WEAK | ● WATCH | 1/4 |
 | USA | Soybeans | −0.173 | contemp. | −0.204 | WEAK | ● WATCH | 1/4 |
 | GHA | Cocoa | −0.190 | 24 mo † | −0.188 | WEAK | ● WATCH | 1/4 |
@@ -145,6 +178,12 @@ ignore that disagreement.
 | THA | Sugar, world | −0.138 | 12 mo | −0.136 | WEAK | ● WATCH | 1/4 |
 | BRA | Coffee, Arabica | −0.066 | 24 mo † | −0.065 | UNTESTED | ● WATCH | 1/4 |
 | VNM | Coffee, Robusta | +0.038 | 12 mo | +0.037 | WEAK | ● WATCH | 1/4 |
+
+**Every row is now WATCH at conviction 1/4.** That is the surrogate gate arriving at the
+positioning layer: with no link clearing the causal test, nothing is entitled to carry a
+direction, and a desk that still printed CAUTIOUS on palm oil would be asserting exactly
+the confidence its own evidence just withdrew. The flatness is the finding, not a bug —
+the directional work belongs on the climate and production side, where the signal is real.
 
 These figures move every month. They are regenerated by the cron, not typed — the table is
 a snapshot of the committed cache, and the live values are on the desk itself.

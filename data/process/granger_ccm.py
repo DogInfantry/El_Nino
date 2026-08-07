@@ -190,6 +190,87 @@ def ccm_convergence(
     return pd.DataFrame(rows)
 
 
+def phase_randomize(x: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    """Ebisuzaki surrogate: same power spectrum, randomized phases.
+
+    This is the null the CCM verdicts actually need. A cross-map skill of 0.3 sounds
+    like evidence until you ask what an *uncoupled* series with the same autocorrelation
+    would have scored — and for smooth, strongly seasonal climate series that number is
+    not small. Randomizing the Fourier phases while preserving the amplitude spectrum
+    keeps the annual cycle and the persistence intact and destroys only the phase-locking
+    that carries the coupling. Skill that survives that is skill shared seasonality
+    cannot explain.
+    """
+    n = len(x)
+    spectrum = np.fft.rfft(x)
+    phases = rng.uniform(0, 2 * np.pi, len(spectrum))
+    # The DC term carries the mean and has no phase to randomize; for even n the Nyquist
+    # bin is real too, and rotating it would inject a spurious imaginary component.
+    phases[0] = 0.0
+    if n % 2 == 0:
+        phases[-1] = 0.0
+    return np.fft.irfft(np.abs(spectrum) * np.exp(1j * phases), n=n)
+
+
+def ccm_surrogate_test(
+    driver: pd.Series,
+    target: pd.Series,
+    *,
+    E: int = 3,
+    tau: int = 1,
+    n_surrogates: int = 200,
+    seed: int = 0,
+) -> dict[str, float]:
+    """Is the observed ONI->target cross-map skill better than a seasonal-null draw?
+
+    Returns rho_obs, the null distribution's mean and 95th percentile, and a one-sided
+    p-value: the fraction of surrogates scoring at least the observed rho. The
+    (k+1)/(n+1) form is deliberate — it can never report p=0, which would claim more
+    certainty than a finite surrogate ensemble can support.
+
+    Only the ONI->target direction at the largest library size is tested. That is the
+    number the verdict actually rests on; testing all eight other cells would multiply
+    the runtime for figures nothing reads.
+    """
+    df = align(driver, target)
+    d = df["driver"].to_numpy(dtype=float)
+    t = df["target"].to_numpy(dtype=float)
+    lib_max = len(d) - (E - 1) * tau
+    if lib_max < 25:
+        raise ValueError("Series too short for CCM after embedding.")
+
+    rng = np.random.default_rng(seed)
+    # target's manifold predicts the driver -> evidence the driver drives the target.
+    rho_obs = _cross_map_skill(
+        t, d, E=E, tau=tau, lib_size=lib_max, rng=np.random.default_rng(seed)
+    )
+
+    null = []
+    for _ in range(n_surrogates):
+        d_surr = phase_randomize(d, rng)
+        # Same seed on every draw so the library/prediction subsampling is identical to
+        # the observed run: the only thing varying across the ensemble is the coupling.
+        rho = _cross_map_skill(
+            t, d_surr, E=E, tau=tau, lib_size=lib_max, rng=np.random.default_rng(seed)
+        )
+        if np.isfinite(rho):
+            null.append(rho)
+
+    if not null or not np.isfinite(rho_obs):
+        return {"rho_obs": float(rho_obs), "p_value": float("nan"),
+                "null_mean": float("nan"), "null_p95": float("nan"), "n_surrogates": 0}
+
+    null_arr = np.asarray(null)
+    exceed = int((null_arr >= rho_obs).sum())
+    return {
+        "rho_obs": float(rho_obs),
+        "p_value": (exceed + 1) / (len(null_arr) + 1),
+        "null_mean": float(null_arr.mean()),
+        "null_p95": float(np.percentile(null_arr, 95)),
+        "n_surrogates": len(null_arr),
+    }
+
+
 def analyze(
     oni: pd.Series,
     commodity: pd.Series,
@@ -197,8 +278,14 @@ def analyze(
     maxlag: int = 24,
     log_price: bool = True,
     mode: str = "detrend",
+    surrogates: int = 0,
 ) -> dict[str, pd.DataFrame]:
-    """Full causal panel for one commodity. Returns dict of result frames."""
+    """Full causal panel for one commodity. Returns dict of result frames.
+
+    ``surrogates`` > 0 adds a ``"ccm_surrogate"`` entry with the phase-randomized
+    significance test. Off by default because it costs ``surrogates`` extra cross-map
+    passes — fine in a precompute script, not fine on a page load.
+    """
     oni_s = make_stationary(oni, log=False, mode=mode)
     com_s = make_stationary(commodity, log=log_price, mode=mode)
 
@@ -214,4 +301,16 @@ def analyze(
     except Exception as exc:  # noqa: BLE001 - CCM is best-effort
         logger.warning("CCM failed: %s", exc)
         result["ccm"] = pd.DataFrame(columns=["lib_size", "rho", "direction"])
+
+    if surrogates:
+        try:
+            result["ccm_surrogate"] = ccm_surrogate_test(
+                oni_s, com_s, n_surrogates=surrogates
+            )
+        except Exception as exc:  # noqa: BLE001 - best-effort, same as CCM
+            logger.warning("CCM surrogate test failed: %s", exc)
+            result["ccm_surrogate"] = {
+                "rho_obs": float("nan"), "p_value": float("nan"),
+                "null_mean": float("nan"), "null_p95": float("nan"), "n_surrogates": 0,
+            }
     return result

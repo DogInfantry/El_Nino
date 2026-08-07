@@ -97,8 +97,9 @@ Anyone can plot a correlation between El Niño and cocoa prices. The hard — an
 
 - **Granger causality** (linear): does lagged ONI add predictive power over the commodity's own history?
 - **Convergent Cross Mapping / CCM** (nonlinear, Sugihara et al. *Science* 2012): does cross-map skill *rise and converge* with library size in **one direction only**? Self-coded via simplex projection — no `pyEDM` dependency.
+- **Phase-randomized surrogate significance** (Ebisuzaki): does that skill beat a null built from the ONI's *own power spectrum* with the phases scrambled? This is the test that matters, because cross-map skill runs high between **any** two smooth seasonal series — two *independent* sine-plus-noise series score ρ ≈ 0.83 in this engine.
 
-**The result is deliberately humbling.** Of the six headline ONI→commodity-**price** links on the desk, **none is strongly causal** (max CCM ρ ≈ 0.32); palm oil & wheat are only *moderate*, the rest *weak / confounded*. So the takeaway the desk leads with is:
+**The result is deliberately humbling, and got more so.** Of the six headline ONI→commodity-**price** links, **not one survives** — all six are *weak / confounded*. Palm oil and wheat read *moderate* until they were tested against the null (p = 0.15 and p = 0.47). The sharpest lesson is Robusta: it has the **highest** raw ρ on the board at 0.32 and the **worst** p-value at 0.976, against a null that averages ρ 0.23 on its own. That ρ 0.32 was previously quoted here as the desk's strongest causal evidence; it is indistinguishable from chance. So the takeaway the desk leads with is:
 
 > **Most ENSO→commodity-price trades the market makes don't survive causal testing.** The clean ENSO signal lives on the **climate & production** side — the monsoon and Maritime-Continent drought we *prove* in the region deep-dives — not in noisy monthly prices.
 
@@ -148,7 +149,9 @@ Both tests run on **linearly detrended** (not differenced — differencing kills
 - **Granger causality** (linear): F-test across lags 0–24.
 - **Convergent Cross Mapping** (nonlinear): in-repo simplex projection (NumPy/SciPy), no pyEDM (its multiprocessing is incompatible with the Panel server on Windows). Genuine causation → cross-map skill rises and converges with library size in *one direction only*.
 
-Surrogate (phase-randomized) significance testing is on the roadmap; current verdicts are exploratory.
+- **Surrogate significance** (Ebisuzaki phase randomization, 500 draws per link): the observed ρ is scored against surrogates that keep the ONI's amplitude spectrum — its annual cycle, persistence and smoothness — and randomize only the Fourier phases. `CAUSAL` and `MODERATE` now additionally require `p < 0.05`; a link that can't beat its own seasonal null is capped at `WEAK` whatever its ρ, and an untested link (`p = NaN`) fails the gate rather than passing it.
+
+The live explorer on page 05 does **not** run surrogates — 500 extra cross-map passes per commodity is a precompute cost, not a page-load cost — so its verdicts use the pre-surrogate rules and are exploratory. The landing strip carries the gated ones.
 
 ---
 

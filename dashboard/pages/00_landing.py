@@ -275,7 +275,7 @@ def _mini_curve(fwd: list[float], rev: list[float]) -> str:
 
 def build_causation_strip(verdicts: pd.DataFrame, ccm: pd.DataFrame) -> str:
     """Six ONI->commodity cards rendered from the *computed* Granger+CCM verdicts."""
-    badge_label = {"mod": "MODERATE", "weak": "WEAK · confounded"}
+    badge_label = {"causal": "CAUSAL", "mod": "MODERATE", "weak": "WEAK · confounded"}
     cards = []
     for _, v in verdicts.iterrows():
         curve = ccm[ccm["commodity"] == v["commodity"]].sort_values("lib_size")
@@ -284,14 +284,54 @@ def build_causation_strip(verdicts: pd.DataFrame, ccm: pd.DataFrame) -> str:
         cls = v["cls"]
         g = v["granger_sig"]
         gtxt = (f"Granger {g}/24 lags sig" if g else "Granger n.s.")
+        # rho alone is not evidence — a rho quoted without the null it beat (or did not)
+        # is the exact misreading this strip exists to prevent, so they ship together.
+        p = v["ccm_p"] if "ccm_p" in v.index else None
+        if p is not None and p == p:
+            ptxt = f" · vs seasonal null p={p:.3f} (null ρ {v['ccm_null']:.2f})"
+        else:
+            ptxt = " · null untested"
         cards.append(
             f"<div class='cz'><div class='zlink'>ONI → {v['commodity']}</div>"
             f"<span class='zbadge {cls}'>{badge_label.get(cls, v['verdict'])}</span>"
             f"<div class='zstat'>{gtxt} · lag {int(v['lag'])}mo<br>"
-            f"CCM ρ {v['ccm_rho']:.2f} · {'partial' if cls == 'mod' else 'flat'}</div>"
+            f"CCM ρ {v['ccm_rho']:.2f}{ptxt}</div>"
             f"{_mini_curve(fwd, rev)}</div>"
         )
     return "<div class='czgrid'>" + "".join(cards) + "</div>"
+
+
+def _causation_lead(verdicts: pd.DataFrame) -> str:
+    """The strip's headline, computed from the verdicts rather than typed above them.
+
+    This paragraph used to assert "none is strongly causal (max CCM ρ 0.32); palm &
+    wheat are only MODERATE". The surrogate test then demoted both, and the ρ 0.32 it
+    cited turned out to be the *weakest* link on the board once measured against its own
+    null. A hand-written headline sitting over computed cards is the same misattribution
+    the strip is built to guard against, one level up — so it is derived now.
+    """
+    n = len(verdicts)
+    surv = verdicts[verdicts["cls"].isin(("causal", "mod"))]
+    tested = verdicts[verdicts["ccm_p"].notna()] if "ccm_p" in verdicts else verdicts.iloc[0:0]
+
+    head = (f"<b>Only {len(surv)} of {n} ENSO→commodity-price links survives causal "
+            f"testing.</b> " if len(surv) else
+            f"<b>Not one of the {n} ENSO→commodity-price links survives causal "
+            f"testing.</b> ")
+
+    detail = ""
+    if len(tested):
+        top = verdicts.loc[verdicts["ccm_rho"].idxmax()]
+        detail = (f"The strongest raw cross-map skill on the board — {top['commodity']} "
+                  f"at ρ {top['ccm_rho']:.2f} — sits at p={top['ccm_p']:.2f} against a "
+                  f"phase-randomized null that averages ρ {top['ccm_null']:.2f} on its "
+                  f"own. Cross-map skill runs high between <i>any</i> two smooth seasonal "
+                  f"series, so a ρ quoted without its null is not evidence. ")
+
+    return ("<p class='czlead'>" + head + detail +
+            "The clean ENSO signal lives on the <b>climate &amp; production</b> side — the "
+            "monsoon and Maritime-Continent drought we prove in the region deep-dives — "
+            "not in noisy monthly prices.</p>")
 
 
 # --------------------------------------------------------------------------
@@ -407,15 +447,14 @@ def build_app() -> pn.viewable.Viewable:
         "<div class='czstrip'>"
         "<div class='czhead'><div class='h'>ONI → Commodity-price · causal test</div>"
         "<span class='sub'>teal = forward cross-map skill (converges if causal) · grey = reverse</span></div>"
-        "<p class='czlead'><b>Most ENSO→commodity-price trades the market makes don't survive "
-        "causal testing.</b> Of six links, none is strongly causal (max CCM ρ 0.32); palm &amp; "
-        "wheat are only MODERATE, the rest WEAK / confounded. The clean ENSO signal lives on the "
-        "<b>climate &amp; production</b> side — the monsoon and Maritime-Continent drought we prove in "
-        "the region deep-dives — not in noisy monthly prices.</p>"
+        + _causation_lead(verdicts)
         + build_causation_strip(verdicts, ccm)
-        + "<div class='czcap'>Verdicts computed live by the in-repo Granger + CCM engine on "
-        "linearly-detrended series (CCM = self-coded simplex projection). This is the "
-        "misattribution guard: the headline trade is usually spurious.</div></div>",
+        + "<div class='czcap'>Verdicts computed by the in-repo Granger + CCM engine on "
+        "linearly-detrended series (CCM = self-coded simplex projection), then tested "
+        "against phase-randomized (Ebisuzaki) surrogates that preserve each series' own "
+        "power spectrum and destroy only its phase-locking. CAUSAL and MODERATE require "
+        "beating that null at p&lt;0.05; a link that cannot is capped at WEAK whatever its "
+        "ρ. This is the misattribution guard: the headline trade is usually spurious.</div></div>",
         margin=0)
 
     disclaimer = pn.pane.HTML(
