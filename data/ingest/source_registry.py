@@ -83,6 +83,13 @@ REGISTRY: tuple[Source, ...] = (
            "Stable-UUID workbook ends 2024-12 by decision: splicing a second live source "
            "risks corrupting the lag/Granger/CCM work that is the moat, for recency the "
            "analysis does not need. Disclosed on page 04."),
+    Source("IMD 0.25° gridded rainfall", "feed",
+           "https://www.imdpune.gov.in/cmpg/Griddata/Rainfall_25_NetCDF.html", 400,
+           "monsoon_india_grid.parquet",
+           "Area-weighted (cos-lat) JJAS totals, 1950–2024. Supersedes the unweighted "
+           "subdivision mean for the all-India figure. Annual cadence and a ~1.9 GB "
+           "download, so it is run by hand — deliberately not in the monthly cron.",
+           expected_lag_days=250),
     Source("IMD subdivision rainfall", "static",
            "https://data.gov.in/", None, "monsoon_india.parquet",
            "Fixed 1901–2017 dataset. All-India JJAS is an unweighted subdivision mean "

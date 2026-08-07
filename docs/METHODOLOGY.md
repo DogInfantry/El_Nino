@@ -180,8 +180,38 @@ a snapshot of the committed cache, and the live values are on the desk itself.
 - **World Bank Pink Sheet ends 2024-12**, by decision. Splicing a second live price source
   risks corrupting the lag / Granger / CCM work that is this project's moat, in exchange for
   recency the analysis does not need. Disclosed on the Sector Impact page.
-- **IMD subdivision rainfall is a fixed 1901–2017 dataset.** All-India JJAS is an unweighted
-  mean of subdivision totals and correlates r = 0.77 with the official area-weighted AISMR.
+- **India monsoon rainfall now comes from IMD's 0.25° gridded daily product**, 1950–2024,
+  area-weighted by cos(lat) over valid cells — see the validation note below. The old
+  36-subdivision set (frozen 1901–2017, all-India as an *unweighted* subdivision mean) is
+  retained only for the pre-1950 record.
+
+### India monsoon: how well the gridded series validates
+
+| Check | Result |
+|---|---|
+| 1971–2020 all-India normal | **858.9 mm** vs IMD's published ~868 mm (within 1.1%) |
+| Old unweighted subdivision mean | ~1045 mm — about 20% too high |
+| Year-to-year agreement with the subdivision series | **r = 0.945** (n = 68, 1950–2017) |
+| 1972 drought | −22.5% here vs ~−24% cited |
+| 2009 drought | −15.0% here vs ~−22% cited |
+
+Averaging 36 subdivisions equally over-weights small very wet ones (the north-east, the
+Konkan coast); cos(lat) area weighting removes that bias, which is what the old r = 0.77
+caveat was really measuring. Departures use a **fixed 1971–2020 baseline**, IMD's current
+normal period — against a series' own mean they would not be comparable with any published
+figure.
+
+**These values are internally consistent and close to the official series, but they do not
+reproduce it.** IMD's headline "country as a whole" number uses subdivision-area weights
+over its own subdivision set, which is a different estimator from a cos(lat) mean over every
+valid grid cell; 2009 is where the two diverge most. Do not quote these as IMD's published
+departures.
+
+The IITM official AISMR series would have been the independent cross-check. Its host
+(`mol.tropmet.res.in`) serves an incomplete certificate chain that Python rejects and
+browsers silently repair by fetching the missing intermediate. Disabling verification in a
+pipeline that commits unattended would admit unauthenticated data into the caches the causal
+work depends on, so the series is dropped rather than worked around.
 - **RONI approximates** NOAA's official index: fixed 1991–2020 base where NOAA uses rolling
   30-year bases. Values are close, not identical.
 - **SARIMA beats the LSTM** on this short univariate series. Both beat persistence at all 12

@@ -47,6 +47,12 @@ netcdf4==1.7.4             # netCDF backend
 # server-renderable for verification). pydeck is installed as an optional
 # drop-in for a 3-D extruded look but is NOT required.
 
+# --- India gridded rainfall (offline pipeline only) ---
+imdlib==0.1.21             # IMD 0.25 deg daily gridded rainfall (1901-2024)
+# NOT in requirements-space.txt: the served pages read monsoon_india_grid.parquet and
+# never re-fetch. Also NOT in the monthly cron — IMD publishes annually and the
+# 1950-2024 download is ~1.9 GB, so data/ingest/imd_gridded.py is run by hand.
+
 # --- Phase 2 remaining (NOT installed yet; see README roadmap) ---
 # cdsapi climpred xskillscore        # ERA5 CNN + gridded verification
 # geopandas shapely rioxarray regionmask   # EM-DAT bubbles / advanced geo
