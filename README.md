@@ -18,7 +18,7 @@
 
 ### **▶ [Open the live dashboard →](https://huggingface.co/spaces/DogInfantry/enso-macro-risk-desk)**
 
-**[Live Demo](https://huggingface.co/spaces/DogInfantry/enso-macro-risk-desk) · [The Moat](#-the-moat-causal-rigor) · [Screenshots](#-screenshots) · [9 Pages](#-the-nine-pages) · [Methodology](#-forecasting--causation-methodology) · [Run It](#-run-it-locally) · [Deploy](#-deployment) · [FAQ](#-faq)**
+**[Live Demo](https://huggingface.co/spaces/DogInfantry/enso-macro-risk-desk) · [The Moat](#-the-moat-causal-rigor) · [Screenshots](#-screenshots) · [11 Pages](#-the-eleven-pages) · [Methodology](docs/METHODOLOGY.md) · [Run It](#-run-it-locally) · [Deploy](#-deployment) · [FAQ](#-faq)**
 
 </div>
 
@@ -28,7 +28,9 @@
 
 The **ENSO Macro Risk Desk** is a production-grade, open-source Python dashboard that answers one question for a commodity / macro analyst or climate-aware portfolio manager: **when the El Niño–Southern Oscillation (ENSO) cycle shifts, what commodity and sector exposure should you reposition — and which of those links survive causal testing?**
 
-It ingests canonical ENSO data directly from **NOAA CPC** (the Oceanic Niño Index), **ERSSTv5 sea-surface-temperature grids**, the **World Bank Pink Sheet** commodity database, and **IMD monsoon** records. It then runs a **dual-model forecasting engine** (SARIMA + PyTorch LSTM) and a **causal-inference engine** (Granger causality + Convergent Cross Mapping) across **nine interactive pages** — a dark, data-dense terminal UI, **no API keys required to start.**
+It ingests canonical ENSO data directly from **NOAA CPC** (the Oceanic Niño Index), **ERSSTv5 sea-surface-temperature grids**, the **World Bank Pink Sheet** commodity database, and **IMD monsoon** records. It then runs a **dual-model forecasting engine** (SARIMA + PyTorch LSTM) and a **causal-inference engine** (Granger causality + Convergent Cross Mapping) across **eleven interactive pages** — a dark, data-dense terminal UI, **no API keys required to start.**
+
+Every weight, threshold and known limit is written down in **[`docs/METHODOLOGY.md`](docs/METHODOLOGY.md)** — rendered in-app as page 09 and enforced against the code by a test, so the published document cannot drift from what actually runs.
 
 The product philosophy is **describe → prescribe**: every region and commodity ends in a positioning view (constructive / cautious / watch + swing catalyst + risk), not just a chart.
 
@@ -56,9 +58,9 @@ The product philosophy is **describe → prescribe**: every region and commodity
 <tr>
 <td width="50%">
 
-**🇮🇳 India deep-dive** — ENSO × IOD → monsoon → food CPI, with a desk view and the real OLS regression heatmap.
+**🇮🇳 India deep-dive** — ENSO × IOD → monsoon → food CPI, with a computed desk view and the real OLS regression heatmap.
 
-<img src="assets/india.png" alt="India ENSO deep-dive showing a constructive desk view, monsoon rainfall deficit map, and an ENSO by Indian Ocean Dipole probability-of-deficient-monsoon heatmap with OLS regression" width="100%">
+<img src="assets/india.png" alt="India ENSO deep-dive showing a computed desk view, monsoon rainfall deficit map, and an ENSO by Indian Ocean Dipole probability-of-deficient-monsoon heatmap with OLS regression" width="100%">
 
 </td>
 <td width="50%">
@@ -104,25 +106,31 @@ That "misattribution guard" — showing the *computed* verdict instead of an ass
 
 ---
 
-## 🗂️ The Nine Pages
+## 🗂️ The Eleven Pages
 
 | # | Page | What it does |
 |:-:|------|------|
 | **00** | **Macro Risk Desk** (landing) | Command-bar terminal: Niño-3.4 gauge · ONI trajectory · forecast cone · **ENSO Exposure Index** choropleth · most-exposed leaderboard · **causal-test strip** |
 | **01** | ENSO Monitor | Live ONI **+ RONI** dual series (1950–present), gauge, live NOAA advisory badge, **weekly Niño-3.4 nowcast** (~1-week lag), CSV export |
 | **02** | Global SST Map | ERSSTv5 2°×2° anomaly grids, flat + orthographic globe, teleconnection zones |
-| **03** | Forecast | SARIMA + LSTM + ensemble fan chart, CI bands, ACC-vs-lead skill, **observed-vs-forecast check** (live weekly SST beside the ensemble's nearest month) |
+| **03** | Forecast | SARIMA + LSTM + ensemble fan chart, CI bands, ACC-vs-lead skill, **observed-vs-forecast check** (live weekly SST beside the ensemble's nearest month), **analog panel** — nearest historical ENSO states by z-scored state vector, with their forward ONI paths |
 | **04** | Sector Impact | Detrended lag-correlation heatmap, ONI × 71 commodities, lags 0–24 mo |
 | **05** | Causation Explorer | Live **Granger + CCM**, both directions, plain-language verdict |
 | **06** | Historical Events | Per-event cards since 1950: peak ONI/RONI, Callahan & Mankin 2023 GDP losses |
-| **07** | 🇮🇳 India deep-dive | **ENSO × IOD → monsoon → food CPI**; real OLS regression (n=117); desk view |
-| **08** | 🌴 SE Asia deep-dive | Palm oil; honest **WATCH** — the ENSO-premium story fails its own composite |
+| **07** | 🇮🇳 India deep-dive | **ENSO × IOD → monsoon → food CPI** on **IMD 0.25° gridded rainfall, area-weighted, 1901–2024**; real OLS regression (n=124); desk view |
+| **08** | 🌴 SE Asia deep-dive | Palm oil; the ENSO-premium story fails its own composite |
+| **09** | 📐 Methodology | Renders [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) directly — one source of truth, no second copy to drift |
+| **10** | 🩺 Source Status | Per-feed freshness, measured **net of structural label lag** — leads with "Behind", not "Age" |
 
-**916 ENSO months · 42 events detected · 71 commodities · 2°×2° global SST grids from 1854 · 12-month forecast horizon · zero API keys required.**
+**916 ENSO months · 42 events detected · 71 commodities · 2°×2° global SST grids from 1854 · 124 years of gridded Indian monsoon · 12-month forecast horizon · zero API keys required.**
+
+Positioning stances are **computed, not typed** — signed peak-lag correlation × current ENSO state, gated by the causal verdict and haircut when the live observation diverges from the forecast. They move when the data moves: on the current run India reads **WATCH** and SE Asia **CAUTIOUS**, both flipped from the earlier hand-written calls.
 
 ---
 
 ## 🔬 Forecasting & Causation Methodology
+
+> Summary below. The full published spec — every weight, threshold, sample window, and the sources deliberately *not* used and why — is **[`docs/METHODOLOGY.md`](docs/METHODOLOGY.md)**, served in-app as page 09 and checked against the code by `tests/test_core.py`.
 
 ### Forecasting
 Two models share an identical walk-forward verification harness, scored against a **persistence reference** (last observed ONI held constant):
@@ -155,6 +163,7 @@ NOAA CPC · ERSSTv5 · World Bank · IMD          data/ingest/  ──►  data/
                                                       ▼
    app.py  ──►  HoloViz Panel + Plotly  ──►  00 Desk · 01 Monitor · 02 Map · 03 Forecast
                                               04 Impact · 05 Causation · 06 History · 07 India · 08 SE Asia
+                                              09 Methodology · 10 Source Status
                                                       │
                                       Dockerfile  ──►  🤗 Hugging Face Space  (CI/CD from GitHub)
 ```
@@ -179,7 +188,7 @@ pip install -r requirements.txt
 python data/ingest/oni_fetcher.py -v
 python data/ingest/pink_sheet.py -v
 
-# 4a — serve the whole site (landing at / + all 9 pages) via the unified entry point
+# 4a — serve the whole site (landing at / + all 10 sub-pages) via the unified entry point
 python app.py                   # → http://localhost:5006
 
 # 4b — or serve a single page
@@ -207,7 +216,9 @@ Panel/Bokeh is a long-running WebSocket server, so the app ships as a **Docker S
 | [ENSO Diagnostic Discussion (PDF)](https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.pdf) | NOAA CPC / IRI | `advisory_fetcher.py` | None |
 | [Pink Sheet — monthly commodities](https://www.worldbank.org/en/research/commodity-markets) | World Bank | `pink_sheet.py` | None |
 | [ERSSTv5 netCDF grids](https://www.ncei.noaa.gov/pub/data/cmb/ersst/v5/netcdf/) | NOAA NCEI | `ersst_fetcher.py` | None |
-| IMD 36-subdivision rainfall (JJAS monsoon) | India Met. Dept. | `monsoon_fetcher.py` | None |
+| IMD **0.25° daily gridded rainfall, 1901–2024** → cos(lat) area-weighted all-India JJAS | India Met. Dept. | `imd_gridded.py` — **manual, ~3 GB of raw year-binaries**; the parquet is committed | None |
+| IMD 36-subdivision monthly rainfall (1901–2017) | India Met. Dept. | `monsoon_fetcher.py` — superseded for all-India, kept for provenance | None |
+| [SOI · Niño 1+2/3/4 · TNI · PDO · AMO · PNA · WP · DMI](https://psl.noaa.gov/data/climateindices/list/) | NOAA PSL | `climate_indices.py` — `coverage()` flags frozen upstreams, `model_features()` drops them before any model sees them | None |
 | [ERA5 reanalysis](https://cds.climate.copernicus.eu/) · [USDA NASS](https://quickstats.nass.usda.gov) · [EM-DAT](https://www.emdat.be/) | Copernicus / USDA / CRED | *(roadmap)* | Free |
 
 ---
@@ -220,7 +231,8 @@ Rigorous analysis means disclosing limits. Read before drawing conclusions.
 2. **The 3-month mean lags raw Niño-3.4 — and is labelled by its *centre* month.** A weekly spike can precede the smoothed ONI crossing ±0.5 °C by ~2 months. CPC's newest ONI row is a *season*: AMJ 2026 is stored under `2026-05-01`, so a fully current reading legitimately displays as "May". Pages therefore name the season (`AMJ 2026 · 3-mo mean, ctr. May`) and pair it with the **live weekly Niño-3.4 nowcast** (~1-week lag) so freshness is visible. The weekly value is a **different quantity** — a single week of OISST, not a 3-month mean — so it must never be read against ONI's ±0.5 °C event thresholds; the 4-week mean is shown beside it to damp noise. Current phase is fetched live, never hardcoded.
 3. **Correlation ≠ causation.** Sector links are detrended Pearson r; the IOD and MJO can drive spurious co-movement. Causal direction needs Granger / CCM (Page 05) — and most price links *fail* it (see [The Moat](#-the-moat-causal-rigor)).
 4. **Exposure Index is a research construct** — 50% computed peak lagged ONI–commodity correlation + 50% curated structural exposure. Not an official product.
-5. **Source freshness.** The World Bank Pink Sheet workbook currently ends **2024-12**; fetchers degrade gracefully to cache. India crop/CPI tabs are illustrative pending USDA/FAOSTAT ingestion.
+5. **Source freshness.** The World Bank Pink Sheet workbook currently ends **2024-12**; fetchers degrade gracefully to cache. India crop/CPI tabs are illustrative pending USDA/FAOSTAT ingestion. Page **10 (Source Status)** publishes per-feed lateness live — measured *net of each feed's structural label lag*, because the ONI is stamped with its **centre** month and a perfectly current value therefore looks ~2.5 months old.
+6. **The gridded all-India series approximates, not reproduces, IMD's published AISMR.** The 1971–2020 normal comes out at 858.9 mm against IMD's ~868 (within 1.1%), and the departures track the old subdivision series at r=0.945 — but IMD weights its own subdivisions rather than cos(lat) grid cells, so 2009 reads −15.0% here against a commonly cited ~−22%. Use these as this repo's series, never as IMD's official departures.
 
 ---
 
