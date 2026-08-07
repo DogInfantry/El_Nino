@@ -8,6 +8,7 @@ Run either way::
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -355,6 +356,27 @@ def test_lstm_exog_channels_feed_input_only_and_reject_gaps() -> None:
         assert "gap" in str(exc).lower(), f"wrong error for a gapped channel: {exc}"
     else:
         raise AssertionError("a gapped exogenous channel was accepted and filled")
+
+
+def test_api_loaders_emit_strict_json() -> None:
+    """Every endpoint must serialize under ``allow_nan=False``.
+
+    ``json.dumps`` will happily write bare ``NaN``/``Infinity``, which is not JSON. Python
+    and JavaScript's ``JSON.parse`` disagree about accepting it, so the failure surfaces
+    as one client seeing a null and another throwing — and a missing r_peak or ccm_rho is
+    exactly the sort of field that goes NaN. A published verification surface that emits
+    invalid JSON undercuts the only thing it exists to do, so this asserts strictness
+    rather than trusting the writer.
+    """
+    sys.path.insert(0, str(_ROOT / "dashboard"))
+    from api import LOADERS, api_patterns
+
+    assert len(api_patterns()) == 2, "index and per-endpoint routes must both mount"
+    for name, (loader, desc) in LOADERS.items():
+        payload = loader()
+        json.dumps(payload, allow_nan=False)  # raises on NaN/Inf
+        assert desc, f"endpoint {name} has no description for the /api index"
+        assert payload not in ([], {}, None), f"endpoint {name} returned nothing"
 
 
 def _run() -> None:

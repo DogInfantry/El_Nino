@@ -81,6 +81,11 @@ def routes() -> dict:
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "5006"))
     origin = os.environ.get("WS_ORIGIN", f"localhost:{port}")
+    # The pages render the numbers; /api publishes the same caches as JSON so a claim
+    # can be checked rather than screenshotted. Imported here, not at module scope, so
+    # a Tornado/import problem in the API can never take the dashboard down with it.
+    from api import api_patterns
+
     pn.serve(
         routes(),
         address="0.0.0.0",
@@ -88,4 +93,5 @@ if __name__ == "__main__":
         websocket_origin=[o.strip() for o in origin.split(",")],
         show=False,
         title="ENSO Macro Risk Desk",
+        extra_patterns=api_patterns(),
     )
