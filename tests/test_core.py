@@ -322,6 +322,41 @@ def test_methodology_doc_matches_code() -> None:
         assert cls in doc, f"verdict class {cls} undocumented"
 
 
+def test_lstm_exog_channels_feed_input_only_and_reject_gaps() -> None:
+    """Extra channels must widen the INPUT without becoming extra targets — or raise.
+
+    Two ways this silently goes wrong. First, a windowing bug that draws ``y`` from all
+    channels turns the head into a joint forecast of every series and quietly changes what
+    the ONI column even means. Second, an exogenous channel that does not cover the span
+    gets standardized around its own NaNs; the model then trains on a hole. The forecast
+    still comes out looking perfectly reasonable in both cases, which is exactly why this
+    is checked rather than eyeballed.
+    """
+    import numpy as np
+
+    sys.path.insert(0, str(_ROOT / "forecasting" / "ml_models"))
+    from lstm_enso import HORIZON, WINDOW, _make_windows, run
+
+    n_ch = 3
+    vals = np.arange(60 * n_ch, dtype=np.float32).reshape(60, n_ch)
+    X, y = _make_windows(vals, end_inclusive=59)
+    assert X.shape[1:] == (WINDOW, n_ch), f"input lost its channels: {X.shape}"
+    assert y.ndim == 2 and y.shape[1] == HORIZON, f"target is not ONI-only: {y.shape}"
+    # y must be channel 0 of the months that follow the window, not a blend of channels.
+    assert np.array_equal(y[0], vals[WINDOW : WINDOW + HORIZON, 0])
+
+    idx = pd.date_range("2000-01-01", periods=60, freq="MS")
+    oni = pd.Series(np.sin(np.arange(60) / 6.0), index=idx)
+    short = pd.DataFrame({"SOI": np.cos(np.arange(60) / 5.0)}, index=idx)
+    short.iloc[-4:] = np.nan  # a laggard index that stops before the ONI does
+    try:
+        run(oni, exog=short, epochs=1)
+    except ValueError as exc:
+        assert "gap" in str(exc).lower(), f"wrong error for a gapped channel: {exc}"
+    else:
+        raise AssertionError("a gapped exogenous channel was accepted and filled")
+
+
 def _run() -> None:
     tests = [v for k, v in globals().items() if k.startswith("test_")]
     for t in tests:
