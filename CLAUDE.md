@@ -15,28 +15,24 @@ terminal." Not a plain Streamlit app — dark, data-dense, Bloomberg-quality.
 **Product thesis (LOCKED 2026-06-28):** the **"ENSO Macro Risk Desk"** — for a
 macro/commodity research analyst or climate-aware PM. Job: *"when the ENSO cycle
 shifts, tell me what commodity & sector exposure to reposition, and which links are
-causally real vs. spurious."* Moat = causal rigor (Granger+CCM; cocoa & wheat
-deliberately FAIL = the misattribution guard). Real audience = recruiters for
-commodity/climate-risk/energy-transition research. **Implication: DESCRIBE → PRESCRIBE**
-— every region/commodity should end in a positioning view (constructive/cautious/watch
-+ swing catalyst + risk), not just data. See `memory/product-thesis.md`.
+causally real vs. spurious."* Moat = causal rigor (Granger+CCM). Real audience =
+recruiters for commodity/climate-risk/energy-transition research. **Implication:
+DESCRIBE → PRESCRIBE** — every region/commodity ends in a positioning view
+(constructive/cautious/watch + swing catalyst + risk). See `memory/product-thesis.md`.
 
 **Owner:** Anklesh Rawat — MBA, equity research background, Python/Streamlit
 proficient, sector analysis (energy transition, metals, infrastructure).
 Communication style: casual ("yooo dawgggg"). Wants sharp design rationale,
 flagged data caveats, clear next-step guidance.
 
-**Tech stack:**
-- Python 3.12 (NOT 3.14 — see Gotchas)
-- Panel 1.9.3 (HoloViz) — multi-page dashboard server
-- Plotly 6.x — gauge, time series, fan chart, global map
-- Altair 6.x — sector-impact heatmap (Vega pane in Panel)
-- statsmodels — SARIMA + Granger causality
-- PyTorch 2.x — LSTM forecaster
-- xarray / netCDF4 — ERSSTv5 netCDF processing
-- pandas, numpy, scipy — data layer
-- kaleido, vl-convert-python — static PNG export (for CI verification)
-- No Streamlit, no pydeck (see Gotchas), no pyEDM (see Gotchas)
+**COMMIT POLICY (hard rule):** every commit authored by **DogInfantry**, with
+**no `Co-Authored-By: Claude` trailer** and no Claude attribution anywhere in the
+message. This overrides the default harness behaviour. Verify after committing:
+`git log -1 --format='%B' | grep -i claude` must find nothing.
+
+**Tech stack:** Python 3.12 (NOT 3.14) · Panel 1.9.3 · Plotly 6.x · Altair 6.x ·
+statsmodels · PyTorch 2.x · xarray/netCDF4 · imdlib · pandas/numpy/scipy ·
+kaleido/vl-convert (static export). No Streamlit, no pydeck, no pyEDM.
 
 **Run a page:**
 ```
@@ -51,50 +47,43 @@ panel serve dashboard/pages/01_enso_monitor.py --show
 ### Data pipeline (ingest → process → cache → dashboard)
 
 ```
-NOAA CPC ASCII  ──► oni_fetcher.py      ──► data/cache/oni.parquet
-NOAA CPC PDF    ──► advisory_fetcher.py ──► (runtime, no cache)
-World Bank XLSX ──► pink_sheet.py       ──► data/cache/commodities.parquet
-ERSSTv5 netCDF  ──► ersst_fetcher.py    ──► data/raw/ (gitignored, ~150 MB)
-                                         ──► data/cache/sst_anomaly_grids.parquet
-data/raw/ + ONI ──► roni_calculator.py  ──► data/cache/roni.parquet
-oni.parquet     ──► enso_phase_labeler  ──► data/cache/enso_phases.parquet
-enso_phases     ──► lag_correlator      ──► (computed on-demand in page 04)
-oni + commod.   ──► granger_ccm         ──► (computed on-demand in page 05)
+NOAA CPC ASCII    ──► oni_fetcher.py       ──► oni.parquet
+NOAA CPC weekly   ──► weekly_nino34.py     ──► weekly_nino34.parquet (+ live read)
+NOAA CPC PDF      ──► advisory_fetcher.py  ──► (live at page load, never cached)
+NOAA PSL indices  ──► climate_indices.py   ──► climate_indices.parquet
+World Bank XLSX   ──► pink_sheet.py        ──► commodities.parquet
+ERSSTv5 netCDF    ──► ersst_fetcher.py     ──► sst_anomaly_grids.parquet
+IMD 0.25° grids   ──► imd_gridded.py       ──► monsoon_india_grid.parquet  (MANUAL, 3 GB)
+data/raw/ + ONI   ──► roni_calculator.py   ──► roni.parquet
+oni               ──► enso_phase_labeler   ──► enso_phases.parquet
+oni + commodities ──► exposure_index.py    ──► exposure_index.parquet
+oni + commodities ──► landing_causation.py ──► landing_{ccm,verdicts}.parquet
+above + forecasts ──► positioning.py       ──► positioning.parquet
+oni + indices     ──► analogs.py           ──► analogs.parquet
+ERSST + IMD grid  ──► enso_flavor_iod.py   ──► india_{enso_iod,regression,years}.parquet
 
-forecasting/baselines/arima_model.py ──► data/cache/arima_{forecast,backtest}.parquet
-forecasting/ml_models/lstm_enso.py   ──► data/cache/lstm_{forecast,backtest}.parquet
-forecasting/ensemble.py              ──► data/cache/forecasts_all.parquet
-forecasting/verification/skill_metrics ──► data/cache/skill_all.parquet
+forecasting/baselines/arima_model.py    ──► arima_{forecast,backtest}.parquet
+forecasting/ml_models/lstm_enso.py      ──► lstm_{forecast,backtest}.parquet
+forecasting/ensemble.py                 ──► forecasts_all.parquet, skill_all.parquet
 ```
 
-All caches are tracked in git (small, reproducible snapshots). Raw files
-(`data/raw/`) are gitignored. The dashboard reads caches only; fetchers are
-run manually when refreshing data.
-
-### Dashboard structure
-
-Six Panel pages, each a standalone `.py` that calls `build_app().servable()`.
-They share `dashboard/theme.py` (palette, Plotly dark layout, data loaders).
-No entry-point `app.py` yet — pages served individually or via
-`panel serve dashboard/pages/*.py --show` (not tested with glob on Windows,
-use explicit file names or a manifest).
+All caches are tracked in git (small, reproducible). Raw files (`data/raw/`, now
+**3.1 GB**: ERSST netCDF + 124 IMD year-binaries) are gitignored. The dashboard reads
+caches only.
 
 ### Key design decisions
 
-- **ONI primary, RONI overlay.** ONI from CPC ASCII (canonical, stable URL,
-  updated ~5th of month). RONI is *computed* from ERSSTv5 in-repo because CPC
-  has no clean machine feed. Fixed 1991–2020 base → approximate, not official.
-- **SARIMA beats LSTM** on this short univariate ONI series — honest framing
-  in the dashboard. Don't rig DL to win; frame as "LSTM needs ancillary indices
-  / spatial SST (CNN track)."
-- **CCM is self-coded** (numpy/scipy simplex projection), not pyEDM. pyEDM
-  uses multiprocessing that recursively re-spawns on Windows outside
-  `__main__` → crashes under the Panel server. Self-coded CCM is robust.
-- **Granger uses detrend, not first-difference.** Differencing monthly data is
-  a high-pass filter that kills the low-frequency ENSO signal → everything
-  looks null. Linear detrend preserves ENSO-band coupling.
-- **Map uses Plotly Scattergeo, not pydeck.** pydeck/deck.gl uses WebGL that
-  can't be verified by kaleido screenshots in CI. Plotly is server-renderable.
+- **ONI primary, RONI overlay.** ONI from CPC ASCII. RONI computed in-repo from
+  ERSSTv5 (fixed 1991–2020 base) → approximate, not official.
+- **SARIMA beats LSTM** on this short univariate series — framed honestly.
+- **CCM is self-coded** (numpy/scipy simplex projection), not pyEDM (Windows
+  multiprocessing re-spawn crashes the Panel server).
+- **Granger uses detrend, not first-difference** (differencing kills the ENSO band).
+- **Map uses Plotly Scattergeo, not pydeck** (WebGL is unverifiable headless).
+- **Stances are computed, not typed** (`positioning.py`), gated by the causal verdict.
+- **Freshness is measured net of structural label lag** (`source_registry.py`).
+- **The methodology doc is the single source of truth**, rendered by page 09 and
+  enforced against code by a test.
 
 ---
 
@@ -103,479 +92,235 @@ use explicit file names or a manifest).
 ### Dashboard
 | File | Role |
 |------|------|
-| `dashboard/theme.py` | Shared palette (`COLORS`), `plotly_dark_layout()`, `style_figure()`, data loaders (`load_oni`, `load_phases`, `load_commodities`, `CACHE_DIR`) |
-| `dashboard/components/oni_gauge.py` | Plotly gauge for the Niño-3.4 reading |
-| `dashboard/components/timeseries.py` | ONI time series with ENSO event shading + optional RONI secondary |
-| `dashboard/components/globe_layer.py` | ERSSTv5 anomaly Scattergeo map with Niño-3.4 box and teleconnection zones |
-| `dashboard/pages/00_landing.py` | **Landing — ENSO Macro Risk Desk.** The front door. `ENSO<GO>` command bar + ticker, left rail (compact gauge / ONI spark / Ensemble forecast cone), center `go.Choropleth` exposure map (signed by dry/wet), linked leaderboard, and the real-verdict causation strip (Granger+CCM, Option-A honest framing). Plotly/HTML only. |
-| `dashboard/pages/01_enso_monitor.py` | **Page 1 — ENSO Monitor.** Live ONI/RONI stat cards, gauge, time series, advisory badge, CSV export. The visual MVP. |
-| `dashboard/pages/02_global_map.py` | **Page 2 — Global Map.** ERSSTv5 anomaly globe, month slider (landmark peaks + latest), flat/orthographic toggle, teleconnection zones overlay. |
-| `dashboard/pages/03_forecast.py` | **Page 3 — Forecast.** SARIMA/LSTM/Ensemble fan chart with CI bands, external-forecast reference markers, ACC-vs-lead skill chart. |
-| `dashboard/pages/04_sector_impact.py` | **Page 4 — Sector Impact.** Altair heatmap of detrended Pearson r (ONI × log commodity price) at lags 0–24 months, ranked bar at chosen lag. |
-| `dashboard/pages/05_causation.py` | **Page 5 — Causation Explorer.** Live Granger (-log10p by lag, both directions) + CCM (rho vs library size, both directions) for any commodity. Plain-language verdict. |
-| `dashboard/pages/06_historical.py` | **Page 6 — Historical Events.** Per-event cards (El Niño/La Niña since 1950): peak ONI, RONI at peak, duration, intensity, post-event commodity moves (landmark events only), Callahan & Mankin 2023 economic losses. |
+| `dashboard/theme.py` | Palette (`COLORS`), `plotly_dark_layout()`, `style_figure()`, loaders (`load_oni`, `load_phases`, `load_commodities`, `CACHE_DIR`) |
+| `dashboard/region_template.py` | Generic region shell. **`stance_from_cache()` / `_apply_stance()` overlay computed stances**; `_horizon_txt()` renders lag 0 as "contemporaneous" and lag 24 as "24 mo (window edge)" |
+| `dashboard/components/oni_gauge.py` · `timeseries.py` · `globe_layer.py` | Gauge, ONI series + event shading, ERSST Scattergeo |
+| `dashboard/pages/00_landing.py` | Landing — command bar, exposure choropleth, leaderboard, causation strip (Option A honest verdicts) |
+| `dashboard/pages/01_enso_monitor.py` | ONI/RONI cards, gauge, series, advisory badge, weekly nowcast card |
+| `dashboard/pages/02_global_map.py` | ERSST anomaly globe, month slider, flat/ortho toggle |
+| `dashboard/pages/03_forecast.py` | Fan chart, skill-vs-lead, observed-vs-forecast nowcast, **analog panel** (`build_analog_chart`, `_analog_card`) |
+| `dashboard/pages/04_sector_impact.py` | Altair lag heatmap, ranked bar |
+| `dashboard/pages/05_causation.py` | Live Granger + CCM per commodity |
+| `dashboard/pages/06_historical.py` | Per-event cards since 1950 |
+| `dashboard/pages/07_india.py` | India deep-dive. **Reads n from `india_regression.parquet`** — never hard-code it again |
+| `dashboard/pages/08_seasia.py` | SE Asia (palm oil); ENSO-phase composite = second misattribution example |
+| `dashboard/pages/09_methodology.py` | **NEW.** Renders `docs/METHODOLOGY.md` directly (no second copy) |
+| `dashboard/pages/10_status.py` | **NEW.** Source freshness table; leads with "Behind", not "Age" |
 
 ### Data ingestion
 | File | Role |
 |------|------|
-| `data/ingest/_common.py` | Shared cache utilities (`cache_path`, `is_fresh`, `save_parquet`, `get_session`) |
-| `data/ingest/oni_fetcher.py` | Fetches CPC ASCII ONI → `oni.parquet`. Fallback: CPC HTML table. |
-| `data/ingest/advisory_fetcher.py` | Fetches live NOAA CPC/IRI ENSO Diagnostic Discussion PDF → parses status + synopsis |
-| `data/ingest/ersst_fetcher.py` | Downloads ERSSTv5 netCDF (~150 MB, cached 30d), computes 1991–2020 anomalies for landmark months + latest → `sst_anomaly_grids.parquet` |
-| `data/ingest/pink_sheet.py` | World Bank Pink Sheet XLSX → tidy `commodities.parquet`. Exposes `FOCUS_COMMODITIES` list. |
-| `data/ingest/weekly_nino34.py` | **NEW (2026-07-30).** CPC **weekly** Niño-3.4 SST anomaly (`wksst9120.for`) → `weekly_nino34.parquet` (week_date · nino34_sst · nino34_anom · source). `latest_weekly()` is read **live at page load** (advisory-style, never raises) with the parquet as offline fallback; returns latest week + 4-wk mean. This is the freshest number on the desk (~1 wk lag) vs the ONI's ~2.5-mo label lag. |
-| `data/ingest/monsoon_fetcher.py` | **NEW (2026-06-28).** Fetches IMD 36-subdivision monthly rainfall CSV (github mirror of data.gov.in, 1901–2017) → all-India JJAS series → `monsoon_india.parquet` (year · jjas_mm · lpa_pct · category). Validated r=0.77 vs documented AISMR departures. |
+| `data/ingest/_common.py` | `cache_path`, `is_fresh`, `save_parquet`, `get_session` |
+| `data/ingest/oni_fetcher.py` | CPC ASCII ONI → `oni.parquet` |
+| `data/ingest/advisory_fetcher.py` | Live CPC/IRI ENSO Diagnostic Discussion PDF |
+| `data/ingest/ersst_fetcher.py` | ERSSTv5 netCDF → anomaly grids |
+| `data/ingest/pink_sheet.py` | World Bank Pink Sheet → `commodities.parquet` |
+| `data/ingest/weekly_nino34.py` | CPC **weekly** Niño-3.4; live read at page load, parquet fallback |
+| `data/ingest/monsoon_fetcher.py` | IMD 36-subdivision monthly (1901–2017). Superseded for all-India; kept for provenance |
+| `data/ingest/climate_indices.py` | **NEW.** NOAA PSL SOI / Niño1+2,3,4 / TNI / PDO / AMO / PNA / WP + long DMI. `coverage()` flags frozen upstreams; **`model_features()` drops them before any model** |
+| `data/ingest/imd_gridded.py` | **NEW.** IMD 0.25° daily grids 1901–2024 → cos(lat) area-weighted JJAS. **MANUAL, ~3 GB.** `--offline` rebuilds from disk |
+| `data/ingest/source_registry.py` | **NEW.** One `Source` row per feed; `status_table()` returns FRESH/AGING/STALE/LIVE/SNAPSHOT/STATIC/MISSING |
 
 ### Data processing
 | File | Role |
 |------|------|
-| `data/process/enso_phase_labeler.py` | Labels each ONI season (El Nino/La Nina/Neutral), applies 5-consecutive-season event definition, intensity tiers (Weak/Moderate/Strong/Very Strong), `event_summary()` → `enso_phases.parquet` |
-| `data/process/lag_correlator.py` | `correlation_matrix(ONI, wide_prices, max_lag, do_detrend)` → tidy df of Pearson r; `peak_lags()` for sort order |
-| `data/process/roni_calculator.py` | Computes RONI from ERSSTv5 (Niño-3.4 anom minus 20S–20N tropical-mean anom, 3-month running mean, fixed 1991–2020 base) → `roni.parquet` |
-| `data/process/granger_ccm.py` | `analyze(ONI, series, maxlag, mode)` → dict with `granger_oni_to_target`, `granger_target_to_oni`, `ccm`. Self-coded CCM (`ccm_convergence`) via simplex projection. |
-| `data/process/enso_flavor_iod.py` | **The India "depth" engine.** From ERSSTv5: ENSO flavor (Niño-3/4, EMI), IOD/DMI (SON peak). `scenario_outputs()`/`write_cache()` → `india_enso_iod.parquet` (grid), `india_regression.parquet` (OLS n=117), `india_years.parquet`. `powered()` prints. Needs `monsoon_india.parquet`. |
-| `data/process/exposure_index.py` | **NEW (2026-06-29).** Constructed ENSO Exposure Index per country (`index=100*(0.5*C+0.5*E)`; C=computed peak |lagged ONI-commodity corr|, E=curated). → `exposure_index.parquet`. Drives the landing choropleth + leaderboard. |
-| `data/process/landing_causation.py` | **NEW (2026-06-29).** Precomputes the landing's 6 ONI→commodity causal verdicts (live Granger+CCM) → `landing_ccm.parquet` (curves) + `landing_verdicts.parquet`. Real result: mostly WEAK (see Gotchas). |
-
-### Forecasting
-| File | Role |
-|------|------|
-| `forecasting/baselines/arima_model.py` | SARIMA(2,0,1)(1,0,0,12) walk-forward backtest + 12-month forward forecast with prediction intervals → `arima_{forecast,backtest}.parquet` |
-| `forecasting/ml_models/lstm_enso.py` | PyTorch LSTM forecaster, same backtest framework → `lstm_{forecast,backtest}.parquet` |
-| `forecasting/ensemble.py` | Combines SARIMA + LSTM → `forecasts_all.parquet`. Also merges skill scores → `skill_all.parquet` |
-| `forecasting/verification/skill_metrics.py` | `acc()`, `rmse()`, `msss()`, `skill_by_lead()` — evaluation metrics |
+| `data/process/enso_phase_labeler.py` | `simple_phase`, `classify_intensity`, `label_phases`, `event_summary` |
+| `data/process/lag_correlator.py` | `lagged_cross_correlation` (signed r by lag), `correlation_matrix`, `peak_lags` |
+| `data/process/roni_calculator.py` | RONI from ERSSTv5 |
+| `data/process/granger_ccm.py` | `analyze()`, self-coded `ccm_convergence()` |
+| `data/process/enso_flavor_iod.py` | India engine. **`_monsoon_series()` prefers the gridded cache, falls back to subdivisions** |
+| `data/process/exposure_index.py` | `REGISTRY`, `EXPOSURE_VERSION`, `index=100*(0.5C+0.5E)` |
+| `data/process/landing_causation.py` | Verdicts. Emits classes `causal` / `mod` / `weak` / `none` |
+| `data/process/positioning.py` | **NEW.** Computed stances: signed peak-lag r × ENSO state, causal gate, conviction haircut, `OVERRIDES` |
+| `data/process/analogs.py` | **NEW.** Nearest historical states (Euclidean, z-scored) + forward ONI paths |
 
 ### Other
 | File | Role |
 |------|------|
-| `tests/test_core.py` | Unit tests for pure logic: phase labeling, detrend, lag correlation, CCM, skill metrics. No network required. Run: `python tests/test_core.py` |
-| `app.py` | **Single entry point (NEW 2026-06-30).** Serves the landing at `/` + the 8 pages at route slugs; per-session exec captures each page's `.servable()`. Used by the HF Space and for local `python app.py`. |
-| `Dockerfile` | **HF Space (Docker SDK) (NEW).** python:3.12-slim, non-root, `CMD python app.py` on 7860. |
-| `requirements-space.txt` | **Serve-only deps (NEW).** Lean subset of `requirements.txt` (no torch/xarray/kaleido) for the deployed image. |
-| `requirements.txt` | Full pinned dependency list (Python 3.12) |
-| `.gitignore` | Excludes `.venv/`, `data/raw/`, `.env`, `.cdsapirc`, `*.nc`, `_*.png`, `_*.html`, `.superpowers/` |
-| `.env.example` | Template for ERA5/CDS credentials (Phase 2 optional) |
-| `README.md` | Polished GitHub README with badges, per-page descriptions, FAQ, data-source table, known caveats |
-
-### Caches (tracked in git)
-`data/cache/`: `oni.parquet`, `enso_phases.parquet`, `commodities.parquet`,
-`sst_anomaly_grids.parquet`, `roni.parquet`, `arima_forecast.parquet`,
-`arima_backtest.parquet`, `lstm_forecast.parquet`, `lstm_backtest.parquet`,
-`forecasts_all.parquet`, `skill_all.parquet`, `monsoon_india.parquet`,
-`india_enso_iod.parquet`, `india_regression.parquet`, `india_years.parquet`,
-`exposure_index.parquet`, `landing_ccm.parquet`, `landing_verdicts.parquet` (NEW 2026-06-28/29),
-`weekly_nino34.parquet` (NEW 2026-07-30 — offline fallback for the live weekly nowcast)
+| `docs/METHODOLOGY.md` | **NEW.** Published weights, thresholds, limits, ISRO decision. Rendered by page 09, enforced by a test |
+| `tests/test_core.py` | **17 tests**, no network |
+| `app.py` | Entry point; `_ROUTE` maps 11 pages |
+| `scripts/refresh_data.py` | Chains ingest→process in order; `DATE_CACHES` regression gate |
+| `Dockerfile` · `requirements-space.txt` | HF Space (serve-only deps) |
+| `requirements.txt` | Full deps incl. `imdlib==0.1.21` (offline only) |
+| `web/` | Next.js 15 static front-door on Vercel |
 
 ---
 
 ## Current State
 
-### Fully done ✅
-- **All 6 dashboard pages** — complete, polished, production-quality
-- **Full data pipeline** — ONI, advisory, Pink Sheet commodities, ERSSTv5 grids, RONI
-- **Forecasting engine** — SARIMA + LSTM + ensemble, verified against persistence
-- **Causal inference** — Granger + self-coded CCM in page 05
-- **RONI** — computed from ERSSTv5, dual ONI/RONI overlay on page 01
-- **Historical event cards** — page 06 with landmark economic loss data
-- **Tests** — 7 unit tests, all passing, no network deps
-- **README** — SEO/AEO/LLMEO optimized, badges, FAQ
-- **Git history** — 5 commits on `master` (latest: `ddd4b0f`)
+### Done and verified ✅
+- **All 11 pages build**; 17 tests pass; deploy live and healthy.
+- **Phase 1 — credibility layer:** computed positioning stances, source freshness
+  registry, published methodology + doc-vs-code test.
+- **Phase 2a/2c — signal layer:** 10 ancillary climate indices; analog engine +
+  panel on page 03.
+- **Phase 3 — India:** IMD 0.25° gridded rainfall 1901–2024, area-weighted;
+  India engine rewired; sample size read from cache.
+- **Deployed:** https://huggingface.co/spaces/DogInfantry/enso-macro-risk-desk
+  (verified `RUNNING`, all routes 200, `docs/` present on the Space).
 
-### Built FOR REAL this session (2026-06-28/29) ✅
-- **India deep-dive — `dashboard/pages/07_india.py`** — BUILT + verified (Plotly figures
-  render). Climate tab = real **ENSO×IOD heatmap + OLS regression**; Economics = live
-  Granger/CCM (sugar); History = computed SON-DMI 1997-vs-2015. Reads caches, not the netCDF.
-- **Region template — `dashboard/region_template.py`** — generic shell (bar / DESK VIEW with
-  CONSTRUCTIVE/WATCH/CAUTIOUS badges / map / KPI rail / live-Granger+CCM Economics / History)
-  + a pluggable per-region Climate exhibit. India + SE Asia both build on it.
-- **SE Asia — `dashboard/pages/08_seasia.py`** — 2nd region (palm oil), honest **WATCH**: its
-  ENSO-phase composite FAILS the El-Niño-premium story (La Niña reads higher = a 1973-74
-  macro-inflation artifact) → a SECOND misattribution example; weak live CCM confirms.
-- **ENSO Exposure Index** (`exposure_index.py` → cache) + **landing causation precompute**
-  (`landing_causation.py` → caches) — the landing's data layer is ready.
+### Key analytical results as of 2026-08-07
+- Regime: **WEAK EL NIÑO · 2026 · STRENGTHENING** (ONI +0.98 AMJ; weekly Niño-3.4
+  +2.15 4-wk; SOI −4.00 → atmosphere coupled).
+- **Stances flipped vs the old hand-typed ones:** India CONSTRUCTIVE→**WATCH**,
+  SE Asia WATCH→**CAUTIOUS**. `r_peak` is negative for 10 of 11 registry rows.
+- **Conviction haircut is ACTIVE** (observed−forecast = +1.01 °C > 1.0 tolerance).
+- **Analogs are bimodal:** May/Jun 1997 and May 2023 → +2.0…+2.4 at +6mo;
+  Sep/Oct 2006 → −0.1/−0.3. The +6mo mean of +1.27 describes none of them.
+- **India IOD hedge holds at full sample:** n=124, Niño-3.4 −8.01 (p<1e-4),
+  DMI +5.26 (**p=0.0037**), R²=0.35. At n=75 it was p=0.059 — the record length
+  changed the conclusion.
 
-### Landing page — "ENSO Macro Risk Desk" v4 — BUILT + verified ✅ (2026-06-30)
-`dashboard/pages/00_landing.py` — DONE. Reuses `oni_gauge.build_gauge` (compact) for the
-left-rail gauge; Plotly for the ONI 24-mo sparkline + Ensemble 12-mo forecast cone
-(`forecasts_all.parquet`); `go.Choropleth` exposure map (`exposure_index.parquet`, **signed z
-— dry=coral / wet=blue / mixed=amber**, hover gives the unsigned index + C/E split); HTML
-leaderboard (India & SE Asia rows hyperlink to the live `/07_india` · `/08_seasia` routes);
-and the **causation strip** built from `landing_verdicts.parquet` + `landing_ccm.parquet`
-inline-SVG mini-curves. **Causation-strip decision RESOLVED = Option A** (honest real
-verdicts + reframed headline "most ENSO→commodity-PRICE trades don't survive causal testing";
-NONE strongly causal, palm/wheat MODERATE, rest WEAK·confounded — the mockup's "cocoa & wheat
-FAIL" was illustrative & wrong, never used). Plotly/HTML only, NO WebGL. Verified by importing
-the module (runs `build_app()`) + kaleido PNG export of all 4 Plotly figs. Mockup ref:
-`.superpowers/brainstorm/1954-1782430142/landing-risk-desk-v4.html`.
-- **DEPLOYED to Hugging Face Spaces** ✅ (2026-06-30) — LIVE at
-  `https://huggingface.co/spaces/DogInfantry/enso-macro-risk-desk` (app host
-  `doginfantry-enso-macro-risk-desk.hf.space`). Docker SDK, free `cpu-basic`. Served by
-  `app.py` (landing at `/`, 8 pages at route slugs) via `Dockerfile` +
-  `requirements-space.txt` (serve-only deps, no torch/xarray). See the **Deployment** block
-  below. **EM-DAT bubbles** (page 02), **CCM surrogate significance**, **ERA5 CNN** — still
-  planned. Other regions (Brazil/Australia/Peru/cocoa belt) = ~60-line config clones of
-  `08_seasia.py`.
-
-### Half-done / rough edges
-- `panel serve dashboard/pages/*.py --show` glob may not work on Windows;
-  pages must be served individually or with an explicit list
-- The Granger caveat note in page 05 says "series are first-differenced" in
-  the docstring header but the actual implementation uses `mode="detrend"` —
-  minor doc inconsistency (the behavior is correct; the docstring is stale)
-
-### Done this session (2026-07-30) ✅ — freshness + self-refreshing data
-User asked "can we update the data, the deploy says as of May 2026?" **Answer: the data was
-never stale.** Local caches == the Space's copies == CPC's newest value (ONI AMJ 2026 +0.98,
-917 rows). The ONI is a 3-month mean stored under its **centre month**, so a current value
-displayed as "May 2026". It was a labelling problem, not a data problem. Shipped:
-- **`data/ingest/weekly_nino34.py`** — CPC weekly Niño-3.4 (`wksst9120.for`), read **live at
-  page load** (advisory pattern, never raises) with `weekly_nino34.parquet` as the offline
-  fallback. Gives the desk a ~1-week-old number: **+2.2 °C, wk ctr. 22 Jul 2026** (4-wk +2.00).
-- **Labels + nowcast** on `00_landing` (chip + rail) and `01_enso_monitor` (new stat card).
-  Both name the season and caption the weekly as a **different quantity** ("not
-  ONI-comparable"). NOT propagated to 02/05/06/07/08 on purpose — a Jul-2026 weekly SST value
-  next to 1950-onward history or prices ending 2024 advertises a mismatch instead of informing.
-- **`03_forecast`** — "Observed vs forecast, right now": live weekly (+2.2) beside the
-  ensemble's nearest month (**+1.20**, Jun 2026). Turns the page's existing "our baselines
-  under-call strong events" caveat into a live receipt. Framed as context, not a scored error.
-- **`04_sector_impact`** — states that price coverage ends Dec 2024 and *why*. Silently
-  trailing off in 2024 read as neglect; saying so reads as a decision.
-- **`forecasting/ensemble.py`** — vintage guard (see Gotchas: `--no-lstm` used to silently
-  emit a mixed-vintage cone).
-- **`.github/workflows/refresh-data.yml`** — monthly self-refresh, **proven green
-  end-to-end** (commit `e152e55` was bot-authored). See Deployment.
-- Docs: `README.md` (weekly row in the data-source table, page 01/03 blurbs, caveat 2 rewritten)
-  and `deploy/hf/README.md` (the Space's own front card).
-Verified by reading the **rendered DOM on the live Space** in a browser, not just HTTP codes:
-all 9 routes 200, no console errors, no fallback placeholders anywhere.
-
-### Broken ❌
-Nothing. (The old `RUNTIME_ERROR` entry from 2026-07-10 is **resolved** — verified
-2026-07-30: runtime API `stage: RUNNING`, app host returns HTTP 200, and the Space's
-`data/cache/oni.parquet` matches local row-for-row. If it errors again the fix is a
-Space restart — `hf spaces restart` or the Space settings page; Claude's restart
-attempt was permission-blocked back then, so the OWNER must do it. Read build/run
-logs with `PYTHONIOENCODING=utf-8 hf spaces logs ...`.)
+### Not done ❌ / deliberately deferred
+- **Phase 2b — LSTM exogenous channels.** Not started. Expensive (torch retrain +
+  ensemble re-run because of the vintage guard) and may still lose to SARIMA.
+- **Phase 4 — JSON API + MCP server.** Not started. `pn.serve(..., extra_patterns=)`
+  is confirmed supported; plan is `dashboard/api.py` + one line in `app.py`.
+- **README.md does not link `docs/METHODOLOGY.md`.**
+- **IITM AISMR dropped** — TLS chain failure, see Gotchas.
+- **BoM RMM/MJO dropped** — the Bureau blocks automated access, see Gotchas.
 
 ---
 
 ## Active Task
 
-**NOTHING IN FLIGHT. Working tree clean, everything pushed, deploy live and healthy.**
-(`git status` shows only `?? .claude/data/` — empty dirs a plugin created, inert, ignore them.)
+**NOTHING IN FLIGHT. Working tree clean.**
 
-The 2026-07-30 freshness work is complete and verified on the live Space (see *Done this
-session* above). The landing/causation-strip decision from 2026-06-30 remains RESOLVED =
-Option A. Product thesis locked: "ENSO Macro Risk Desk" — DESCRIBE → PRESCRIBE.
+**3 commits are ahead of `origin/master` and NOT pushed:** `4d37cdb`, `ce0a372`,
+`48be828` (all of Phase 3). Pushing triggers `deploy-hf.yml` → the Space rebuilds
+itself. Phases 1 and 2 are already pushed and live (`3bbdf19`).
 
-**The one thing a new session should know is time-based, not code-based:** CPC publishes
-MJJ 2026 (~Aug 5) and `refresh-data.yml` fires unattended on **Aug 6**. A green
-"no new upstream data — nothing to commit" run is a **pass**, not a failure. Nothing to do
-unless that run goes red.
-
-**Highest-value open work is analytical, not technical:** the prescriptive layer is now
-regime-stale. The DESK VIEW badges on `07_india`/`08_seasia` and `exposure_index.parquet`
-were written when ONI sat near neutral; it is now **+0.98 and strengthening** (weekly +2.2).
-Since DESCRIBE → PRESCRIBE is the whole thesis, a stale stance costs more credibility than
-any label ever did. Discuss with the user before rewriting stances — they are judgement calls,
-not computed outputs.
-
-**Verify Panel pages** by importing the module (runs `build_*()`) with
-`PYTHONIOENCODING=utf-8`. For the LIVE Space, `get_page_text`/`curl` return **empty** because
-Panel mounts into shadow DOM — walk `shadowRoot`s via a JS eval instead, and allow ~30 s after
-a deploy before trusting a MISS (a mid-restart container serves the old code). Screenshots of
-the live server need the browser pane displayed; kaleido PNG export still works for figures.
-
-**Verify Panel pages** by importing the module (runs `build_*()`) + exporting Plotly figs to
-PNG via kaleido — you CANNOT screenshot the live Bokeh server (websocket). Use
-`PYTHONIOENCODING=utf-8` (Windows console chokes on −/ñ). The kaleido Timestamp gotcha bit
-the landing too: a single-point marker trace must pass a Series slice (`x.iloc[[-1]]`), NOT a
-list-wrapped scalar (`[x.iloc[-1]]`) — the latter is un-serializable under kaleido.
+Everything else in the plan is optional and unstarted. The approved plan is at
+`C:\Users\Anklesh\.claude\plans\i-came-across-https-github-com-koala73-w-shimmying-cocke.md`.
 
 ---
 
 ## Next Steps (ordered)
 
-1. **Refresh the positioning views for a strengthening El Niño** — highest value. DESK VIEW
-   badges on `07_india`/`08_seasia` + `exposure_index.parquet` were written near-neutral; ONI
-   is now +0.98 with weekly SST +2.2. Ask the user before changing any stance.
-2. **Add more regions** — Brazil/coffee, Australia/wheat, Peru/floods (sign="wet"), cocoa
-   belt — each a ~60-line config clone of `08_seasia.py` on `region_template.py`.
-3. **Wire India's illustrative tabs** — KPI rail + Agriculture crop bars need real crop/CPI
-   ingestion (USDA/FAOSTAT). Climate/Economics/History are already real.
-4. **(Deferred on purpose)** Pink Sheet live ingest — splice the latest dated World Bank
-   monthly bulletin onto the historical workbook so pages 04/05/07/08 pass Dec 2024. Real
-   risk: a two-source seam with differing formats and revisions can corrupt the
-   lag/Granger/CCM work that *is* the moat, for recency the analysis doesn't need. The cutoff
-   is now disclosed on page 04 instead. Only do this if the user explicitly wants it.
-5. **(Optional)** EM-DAT bubbles (page 02) · CCM surrogate significance · custom HF domain ·
-   landing choropleth click-to-route (leaderboard rows already link).
+1. **Push Phase 3** — `git push origin master`. Then verify the Space (see Gotchas
+   for why HTTP 200 is not proof).
+2. **README.md** — link `docs/METHODOLOGY.md`, mention pages 09/10 and the analog panel.
+3. **Phase 2b — LSTM exogenous channels.** Feed `climate_indices.model_features()`
+   as extra input channels; add a `variant` column to `skill_all.parquet`; chart
+   univariate vs multivariate on page 03. **If SARIMA still wins, say so.**
+4. **Phase 4 — machine-readable surface.** `dashboard/api.py` Tornado handlers
+   (`/api/state`, `/api/positioning`, `/api/exposure`, `/api/verdicts`,
+   `/api/analogs`, `/api/sources`) + `mcp_server.py` (stdio, offline only).
+5. **Optional:** more regions (Brazil/coffee, Australia/wheat, Peru/floods) as
+   ~60-line clones of `08_seasia.py`; EM-DAT bubbles; CCM surrogate significance.
 
 ---
 
-## Deployment (HF Spaces — LIVE 2026-06-30)
+## Deployment
 
 **Live:** https://huggingface.co/spaces/DogInfantry/enso-macro-risk-desk
-(app host `doginfantry-enso-macro-risk-desk.hf.space`). Docker SDK, free `cpu-basic`
-(sleeps after inactivity → ~20-30s cold start; no cost).
+(app host `doginfantry-enso-macro-risk-desk.hf.space`). Docker SDK, free `cpu-basic`.
 
-**Why Docker, not Gradio/Static:** Panel/Bokeh is a long-running WebSocket server — it
-can't run as a serverless/static app (this is also why it can't deploy to Vercel without
-WASM-converting). Docker Space runs real `panel serve` in a container on port 7860.
-
-**How it's wired:**
-- `app.py` — single entry point. Serves the landing at `/` and the 8 other pages at their
-  route slugs (`07_india`, ...). Per-session it execs each page file and captures whatever
-  it marks `.servable()` (uniform across `build_app` pages AND the `build_region` ones).
-  Reads `PORT` + `WS_ORIGIN` from env.
-- `Dockerfile` — python:3.12-slim, non-root user 1000, `pip install --user
-  requirements-space.txt`, `COPY . .`, `ENV PORT=7860 WS_ORIGIN=<space host>`, `CMD python app.py`.
-- `requirements-space.txt` — serve-only deps (panel/bokeh/plotly/altair/pandas/numpy/scipy/
-  statsmodels/pyarrow/requests/pypdf). **No torch/xarray/netcdf4/kaleido** — the dashboard
-  only READS the parquet caches; the offline pipeline isn't run at serve time. Keeps the
-  image small + build fast (all wheels, no compile).
-
-**Auth + push:** `hf` CLI (in `.venv/Scripts/`) authed as DogInfantry (write token; the HF
-*MCP* server's auth does NOT cover the CLI). Files pushed via `hf upload <repo> <local>
-<path> --repo-type space` (the git repo is NOT mirrored to HF — keeps the GitHub README
-free of HF YAML frontmatter; the Space's README.md is a separate HF-frontmatter file).
-
-**Gotchas hit:**
-- `hf upload --exclude "**/..."` → Git Bash expands the glob before `hf` sees it → "unexpected
-  extra arguments". Just omit `--exclude` (`__pycache__` in the image is harmless).
-- `hf spaces logs` printing to the Windows console → `'charmap' codec can't encode` abort.
-  Run with `PYTHONIOENCODING=utf-8`.
-- Verify with `HfApi().get_space_runtime(...).stage` + curl each route for HTTP 200 (a page
-  that errors on build returns 500). `RUNNING` alone isn't proof.
-- To redeploy after a code change: re-`hf upload` the changed file(s); README/Dockerfile/
-  requirements changes trigger a full rebuild, pure-code changes hot-reload.
-
-**CI/CD (auto-deploy) — LIVE 2026-06-30:** `.github/workflows/deploy-hf.yml` syncs to the
-Space on every push to `master` (path-filtered to app/cache/config changes) via
-`huggingface_hub.upload_folder/upload_file` — so **push to GitHub = Space redeploys itself**,
-no manual `hf upload` needed. The job uses `environment: huggingface` so each run shows under
-the repo's **GitHub Deployments** tab (the HF deploy was previously invisible to GitHub
-because `hf upload` doesn't touch GitHub's Deployments API). Token = repo secret `HF_TOKEN`
-(set via `gh secret set HF_TOKEN --repo DogInfantry/El_Nino`). The HF-frontmatter README is
-versioned at `deploy/hf/README.md` (uploaded as the Space's `README.md`) to keep the root
-README clean. Scoped to THIS repo only. **If the HF token is rotated, update the secret** with
-`gh secret set HF_TOKEN` or CI deploys will start failing on auth.
-
-**Vercel front-door + keep-alive (NEW 2026-07-10):** Vercel CANNOT host the app itself
-(Panel/Bokeh = long-running WebSocket server; Vercel is serverless). Instead:
-- `web/` — **Next.js 15 front-door** (App Router, TypeScript, `output:"export"` = pure
-  static; rebuilt from the original single index.html 2026-07-10 because the user wanted a
-  recognized framework on the Vercel project/repo, not "Framework: Other"). Structure:
-  `app/page.tsx` (client component: hero + LAUNCH DESK CTA + page-thumbnail deep links into
-  HF routes), `app/layout.tsx`, `app/globals.css` (theme.py palette hardcoded),
-  `public/assets/` (copy of `assets/`). A hidden iframe GET of the app host **prewarms** a
-  sleeping Space on page load; the status pill polls
-  `https://huggingface.co/api/spaces/DogInfantry/enso-macro-risk-desk/runtime` (CORS-enabled)
-  and maps stage → LIVE / WARMING… / OFFLINE. **Do NOT drive the pill off the iframe `load`
-  event — cross-origin `load` fires even on a 503 error page** (bit us: it showed LIVE while
-  the Space was in RUNTIME_ERROR). Build: `cd web && npm run build` → `web/out/`.
-- Vercel wiring (one-time, dashboard): import `DogInfantry/El_Nino`, Root Directory=`web`,
-  everything else auto (Next.js is auto-detected — framework badge, `next build`, serves
-  `out/`). Pushes touching `web/` auto-redeploy.
-- `.github/workflows/keepalive.yml` — cron ping of the app host every 6h; non-200 fails the
-  job (uptime monitoring). Keeps the free Space from sleeping (runtime API gcTimeout=48h).
-  GitHub disables cron workflows after ~60 days of repo inactivity; any push re-enables.
-  **LIVE 2026-07-10** (pushed `038e09f`; first dispatch run green, 13s, HTTP 200). Needed a
-  one-time `gh auth refresh -h github.com -s workflow` + `gh auth setup-git` — the previous
-  git credential lacked the `workflow` OAuth scope, which rejects any push touching
-  `.github/workflows/` (and the contents-API route too).
-- Local preview of the front-door: launch config `frontdoor` in `.claude/launch.json`
-  (`python -m http.server 8123 -d web/out` — run `cd web && npm run build` first).
-
-**Monthly data refresh — now AUTOMATED (2026-07-30):** `.github/workflows/refresh-data.yml`
-runs on the **6th monthly** (cron `0 9 6 * *`, after CPC's ~5th publish) + manual dispatch:
-installs `requirements.txt`, runs `scripts/refresh_data.py`, and commits the cache diff to
-`master` only if something actually changed. **A green "no new upstream data" run is the
-expected outcome most months, not a failure.** Two guards make unattended push safe: the
-script runs `tests/test_core.py` as its last step, and it exits 1 if any cache came back
-MISSING or with an **older** max date than before. Because a `GITHUB_TOKEN` push does **not**
-trigger other workflows, the job explicitly `gh workflow run deploy-hf.yml` afterwards
-(needs `permissions: actions: write`). `refresh_data.py` falls back to `sys.executable`
-when there is no `.venv`, which is what lets it run on a runner at all.
-
-The workflow retries the refresh once after 5 min: **NOAA's `downloads.psl.noaa.gov`
-intermittently 502s** on the ERSST netCDF (it did during this workflow's first dispatch
-on 2026-07-30, from CI *and* from a laptop — so it is upstream, not a runner block).
-`get_session()` retries 5xx but only over ~16s. When ERSST is down the whole run fails
-and commits **nothing** — that is deliberate: ONI updating without RONI/grids would
-produce exactly the mixed-vintage caches the ensemble guard exists to prevent. Re-dispatch
-the workflow once NOAA is back.
-
-**Manual refresh** (unchanged): `python scripts/refresh_data.py` (add `--no-lstm`
-to skip the slow retrain — but see the ensemble-vintage note below) → review
-`git diff data/cache` → commit + push → HF Space redeploys itself.
-
-**`--no-lstm` is no longer silently wrong:** `ensemble.py` inner-joins the SARIMA and
-LSTM members on `date`/`(origin, lead)`, so refreshing one without the other used to emit
-a mixed-vintage cone with no warning. It now raises a `SystemExit` naming both vintages.
-CI therefore runs the FULL refresh (torch included). The script only chains the existing module `__main__`s in dependency order and prints
-a before/after cache-freshness table. Run shortly after the ~5th (CPC posts the new ONI then).
-Advisory is live-fetched at page load (never stale); Pink Sheet snapshot still ends 2024-12;
-monsoon data is a static 1901–2017 dataset; the Vercel front-door is static (no data).
+- `app.py` serves the landing at `/` and 10 pages at route slugs.
+- `.github/workflows/deploy-hf.yml` — push to `master` syncs `dashboard/`,
+  `data/cache/`, `data/process/`, `data/ingest/`, **`docs/`**, `app.py`, `Dockerfile`,
+  `requirements-space.txt` to the Space. Token = repo secret `HF_TOKEN`.
+- `.github/workflows/refresh-data.yml` — 6th monthly; runs `scripts/refresh_data.py`,
+  commits only if caches changed, then explicitly dispatches the deploy (a
+  `GITHUB_TOKEN` push does not trigger other workflows).
+- `.github/workflows/keepalive.yml` — 6-hourly ping.
+- `web/` — Next.js static front-door on Vercel.
 
 ---
 
 ## Gotchas
 
-### Python version — use 3.12, not 3.14
-System default is Python 3.14. Phase 2 stack (PyTorch, xarray, cartopy, pyEDM
-equivalents) lacks wheels for 3.14, and HF Spaces runs 3.10–3.12.
-Always activate `.venv` (Python 3.12) before running anything.
+### Commit authorship
+Author **DogInfantry**, **never** a `Co-Authored-By: Claude` trailer. See the hard
+rule under **Project**.
 
-```
-.venv\Scripts\activate
-```
+### GateGuard fact-forcing hook
+Every first Write/Edit per file and the first Bash call demand a "facts" preamble
+(importers, affected API, data schemas, verbatim user instruction) before the tool
+runs. It is not a bug. Supply the facts and retry the identical call. `ECC_GATEGUARD=off`
+disables it. **Batched edits partially apply** — if two edits are sent together, one
+can land while the other is gated, leaving the file half-edited. Re-check before retrying.
 
-### Monsoon data + the ENSO×IOD engine (NEW 2026-06-28)
-- All-India JJAS is computed in `monsoon_fetcher.py` as the **unweighted mean** of the
-  IMD 36-subdivision JJAS totals (islands excluded). It correlates **r=0.77** with the
-  official area-weighted AISMR departures — fine for conditioning, would tighten with
-  area weighting (we have no subdivision areas, only lat/lon centroids).
-- `enso_flavor_iod.py` reads the ERSST netCDF directly (same file/clim as RONI). Boxes are
-  in **0–360 lon**. IOD must be measured at its **SON peak** (JJAS-mean blurs 1997 vs 2015).
-  ENSO *flavor* (Niño4−Niño3 / EMI) is confounded with magnitude on a tiny sample — we
-  computed it, found it inconclusive, and **dropped it** rather than over-claim.
-- **Windows console can't print U+2212 (−) or ñ** under cp1252 → `UnicodeEncodeError`. Use
-  ASCII labels in any `print`/`to_string`, or run with `PYTHONIOENCODING=utf-8`.
+### The ONI is labelled by its CENTER month — that is NOT staleness
+A 3-month running mean stored under its centre month, so a current value looks ~2.5
+months old. `source_registry.expected_lag_days` (75 for the ONI) exists precisely for
+this. **The first cut of the freshness module reproduced the 2026-07-30 false alarm
+inside the tool built to prevent it** — it called a current ONI STALE at 98 days.
+Always measure lateness net of structural label lag.
 
-### ONI→commodity-PRICE causation is genuinely weak — render computed, not asserted (2026-06-29)
-`landing_verdicts.parquet` found NONE of the 6 ONI→price links strongly CAUSAL (max CCM
-ρ=0.32). Granger over-detects (palm sig=13/24) but CCM doesn't confirm. The v4 mockup's
-"palm/robusta CAUSAL, cocoa & wheat FAIL" is ILLUSTRATIVE and factually wrong vs the data
-(wheat is MODERATE, robusta WEAK). **Never hardcode the mockup verdicts** — always show the
-computed one. The honest, on-moat story: the strong clean ENSO signal is on the climate/
-production side (monsoon, MC drought — proven), not noisy monthly prices. This is the
-misattribution guard, just more sweeping than the mockup. (Awaiting the user's A/B/C call.)
+### Frozen upstreams that still return HTTP 200
+- CPC `wksst8110.for` — frozen at 2021-01-27. Only `wksst9120.for` is live.
+- PSL `amon.us.data` (AMO) — frozen at 2023-01. `climate_indices.coverage()` flags
+  anything >400 d behind the pack; **`model_features()` drops it at the source**.
+- PSL `pdo.data` — ~11 months behind. Passes the frozen test but is the laggard, and
+  because a state vector needs every feature it dragged the analog query back a year.
+  **Deliberately excluded from `analogs.POINT_INDICES`.**
 
-### The ONI is labelled by its CENTER month — that is NOT staleness (2026-07-30)
-The ONI is a 3-month running mean and CPC's newest row is a *season* (e.g. AMJ 2026),
-stored with `date = 2026-05-01` (the centre month). Printing that month alone made the
-landing read "as of May 2026" on 2026-07-30 and the deploy looked 2.5 months stale when
-it was **exactly current** (local `oni.parquet` == CPC's file == the Space's copy, 917
-rows). Before ever "fixing" a staleness complaint, diff local vs CPC vs the Space —
-`https://huggingface.co/spaces/DogInfantry/enso-macro-risk-desk/resolve/main/data/cache/oni.parquet`
-is readable over plain HTTP. The pages now print the **season** plus `(3-mo mean, ctr. May)`
-and pair it with the live weekly nowcast; keep it that way.
+### Sources deliberately not used
+- **Bureau of Meteorology (RMM/MJO)** — returns a block page: the Bureau "does not
+  support web scraping… you should stop." Data owner declining; do not work around.
+- **IITM AISMR** (`mol.tropmet.res.in`) — incomplete TLS chain that Python rejects and
+  browsers silently repair. `verify=False` in a pipeline that commits unattended would
+  admit unauthenticated data into the caches the causal work rests on. Dropped.
+- **ISRO/MOSDAC/Bhoonidhi/IIRS** — INSAT-3D sits at 82°E, so its disk spans ~1°E–163°E
+  and **physically cannot see Niño-3.4 (170°W–120°W)**. Impact-side instruments only.
+  MOSDAC and Bhoonidhi are auth-gated scene archives. IIRS is a training institute.
+  Full reasoning in `docs/METHODOLOGY.md`.
 
-### CPC weekly Niño-3.4 — use `wksst9120.for`, NEVER `wksst8110.for`
-`wksst8110.for` (1981–2010 base) is **FROZEN at 27JAN2021** but still returns HTTP 200,
-so fetching it silently ships 5-year-old data. Only `wksst9120.for` (1991–2020 base) is
-live. The file is fixed-width and a **negative anomaly runs together with the SST**
-(`26.8-0.1`), so `str.split()` yields 7 fields instead of 8 and shifts every column —
-parse with `re.findall(r'-?\d+\.\d', line)` and assert 8 numbers (Niño-3.4 = idx 4/5).
-`tests/test_core.py` covers exactly that row. Also: a single weekly value is NOT
-comparable to the ONI's ±0.5 °C thresholds (different product and cadence) — always
-caption it as a distinct quantity and show the 4-week mean beside it.
+### Verdict class literals
+`landing_causation._verdict()` emits `causal` / `mod` / `weak` / `none`. `positioning.py`
+gates on `("causal", "mod")`. It originally tested for `"strong"`, which is never
+emitted — a genuinely CAUSAL link would have been silently capped at WATCH. Covered by
+a test now.
 
-### ONI data source — CPC ASCII, not HDX CSV
-Primary source: `https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt`
-The HDX CSV mirror requires resolving per-resource UUIDs that change.
-HTML table is the programmed fallback; both normalize to the same tidy schema.
-CPC updates ~5th of each month.
+### pandas turns None into NaN in float columns
+`status_table()` returns `None` ages for sources with no cache; pandas stores them as
+`NaN`, so `is None` misses them and `int(NaN)` raises. Use `pd.isna()`.
+Also: `df.sub` is the subtract **method** — `j.sub` silently returns a bound method
+instead of a column. Use `df["sub"]`.
 
-### World Bank Pink Sheet is stale after 2024-12
-The stable-UUID URL serves a snapshot ending **2024-12** ("Updated Jan 2025").
-Fine for 1960–2024 correlation analysis. For live commodity prices, supplement
-with the latest dated bulletin.
+### Sample length can change a conclusion
+The IMD grid was first pulled from 1950 on the reasoning that pre-1950 has no ONI to
+pair with — but the India regression uses ERSST-derived Niño-3.4/DMI, which run to 1854.
+At n=75 the IOD term read p=0.059 (marginal); at n=124 it is p=0.0037. **Check what a
+cutoff actually costs the specific estimator before choosing it.**
 
-### No pyEDM — CCM is self-coded
-pyEDM uses Python multiprocessing that recursively re-spawns worker processes
-on Windows when the module is imported outside of `if __name__ == "__main__"`.
-This crashes the Panel server. The CCM implementation in `granger_ccm.py` uses
-numpy/scipy simplex projection and is robust under the server.
+### The gridded India series approximates, does not reproduce, official AISMR
+1971–2020 normal 858.9 mm vs IMD's published ~868 (within 1.1%); r=0.945 vs the old
+subdivision series. But 2009 reads −15.0% against a cited ~−22% — IMD weights its own
+subdivisions rather than cos(lat) grid cells. **Never quote these as IMD's published
+departures.** The old unweighted subdivision mean sat at ~1045 mm, ~20% too high — that
+was the real cause of the r=0.77 caveat.
 
-### Granger — detrend, do NOT first-difference
-First-differencing monthly data is a high-pass filter that kills the
-low-frequency (multi-month to multi-year) ENSO signal. Everything becomes
-null. Use `mode="detrend"` (linear detrend) in `granger_ccm.analyze()`.
-The stale docstring at the top of `granger_ccm.py` says "first-differenced" —
-**ignore the docstring, the implementation is correct.**
+### Python version — 3.12, not 3.14
+System default is 3.14, which lacks wheels for the Phase-2 stack. Always activate `.venv`.
 
-### Plotly kaleido serialization
-Lists containing `pd.Timestamp` scalars are not JSON-serializable under
-kaleido (Bokeh live server tolerates them). Pass `datetime64` Series/arrays
-or ISO strings into `vrect`, `annotations`, and traces. See `03_forecast.py`
-for the pattern: `pd.DataFrame({"date": [last_date], ...})` where `last_date`
-is a Timestamp — this works because kaleido serializes the DataFrame column,
-not the scalar.
+### Windows console encoding
+`UnicodeEncodeError` on `−`, `ñ`, `°` under cp1252. Always run with
+`PYTHONIOENCODING=utf-8`.
 
-### Screenshotting live Panel/Bokeh apps — use a FIXED wait, not networkidle
-The Panel dev server holds a persistent WebSocket → the browser never hits
-`networkidle` → tools that wait on it time out. But you CAN screenshot the live
-app (done 2026-06-30 for the README): Playwright with `wait_until="load"` +
-`page.wait_for_timeout(8500)` (fixed beat to let the ws render Plotly/Bokeh),
-`device_scale_factor=2`, dark `color_scheme`. Serve via `python app.py` on 5006,
-shoot each route, then auto-crop dark margins with PIL (`bbox` of pixels deviating
-from the corner background) and downscale to ~1600px. The generator scripts are in
-the session scratchpad; outputs live in `assets/` (`hero.svg` + 5 page PNGs, used
-by the README). The earlier "don't try playwright" advice was wrong — only
-`networkidle` fails. For headless *chart* checks (CI), kaleido/vl-convert PNG
-export is still the lighter path. **`assets/hero.svg`** is generated from the real
-ONI record by a script (coral El Nino / blue La Nina backdrop) — static SVG, GitHub-safe.
+### Verifying Panel pages
+Import the module (that runs `build_app()` / `build_region`) and export figures via
+kaleido. For the LIVE Space, `get_page_text`/curl return **empty** — Panel mounts into
+shadow DOM; walk `shadowRoot`s via JS eval, and allow ~30 s after a deploy. **HTTP 200
+is not proof**: page 09 returns 200 while rendering its "docs not found" fallback, so
+also check `HfApi().list_repo_files(...)`.
 
-### Map: Plotly Scattergeo, NOT pydeck
-pydeck uses WebGL (deck.gl). WebGL can't be verified by headless screenshot
-tools. Plotly Scattergeo is server-renderable. Both flat and orthographic
-projections are already implemented in `globe_layer.py`.
+### kaleido Timestamp serialization
+A single-point marker trace must pass a Series slice (`x.iloc[[-1]]`), never a
+list-wrapped scalar (`[x.iloc[-1]]`).
 
-### Commodity moves — landmark events ONLY
-The `_commodity_moves()` function in `06_historical.py` is intentionally
-gated on `LANDMARK_FACTS`. Showing post-event commodity moves for weak events
-naively captures unrelated macro spikes (e.g. 2021–22 post-COVID supply chain)
-and misattributes them to an ENSO signal. This is a deliberate design choice.
+### Peak lags on the search boundary
+`lagged_cross_correlation` searches lags 0–24. Cocoa and Arabica peak at exactly 24 —
+the true peak may lie outside the window, so it must not be read as a horizon. Rendered
+as "24 mo (window edge)"; lag 0 renders as "contemporaneous".
 
-### RONI vs official RONI
-This repo computes RONI from ERSSTv5 on a **fixed 1991–2020 base**. The
-official NOAA RONI uses ONI's rolling 30-year base periods. The values
-*approximate* (not reproduce) the official RONI. NOAA adopted RONI as the
-official ENSO index on **16 Feb 2026**. Any new chart that uses the ENSO
-index must be labelled appropriately (ONI or RONI).
-Observable signal: ONI runs ~0.34°C warmer than RONI since 2015 (background
-warming). The 2023–24 event is ≈0.6°C lower under RONI.
-
-### SARIMA beats LSTM — be honest
-SARIMA outperforms the small LSTM on this short univariate ONI series. Both
-beat persistence at all 12 leads. Do NOT rig the DL model to look better.
-Correct framing: "LSTM needs ancillary indices / spatial SST (CNN track)."
-
-### Forecasting confidence horizon
-Both models beat persistence at 1–12 leads. Skill (ACC) typically falls below
-the "useful skill" 0.5 threshold around 6–8 months — the ENSO spring
-predictability barrier. The fan chart shows the uncertainty bands; the model
-spread vs CPC dynamical models is the real signal.
-
-### Git state
-Single-branch workflow on `master`. Remote IS configured:
-`origin` → `https://github.com/DogInfantry/El_Nino.git` (pushed through `5dcbd9f`).
-`gh` is authed as `DogInfantry`. Just `git push origin master` as milestones land.
-`.gitignore` excludes `.claude/settings.local.json` but tracks
-`.claude/launch.json`. Data caches (`data/cache/*.parquet`) are intentionally
-tracked — they're small and let the dashboard run without re-fetching.
-`CLAUDE.md` itself is currently untracked (commit it when convenient).
-
-### Design mockups live in gitignored `.superpowers/brainstorm/`
-The landing + India designs are HTML mockups (superpowers Visual Companion), NOT
-repo source — they won't show in `git status`/`git ls-files`. Sessions:
-- `1954-1782430142/` — landing-risk-desk v1→**v4** (v4 locked), `region-detail-india.html`
-  (old India), impact-explorer/map explorations. **Its server (port 53853) is DEAD.**
-- `363-1782522811/` — `region-india-research-note.html` (the new India). **Its server
-  is LIVE at http://localhost:50963.** Brainstorm server serves the NEWEST .html in a
-  session dir; it auto-exits after ~30 min idle (check `.server-info` / `.server-stopped`).
-
-### jq is NOT installed on this machine
-Bash hook/command one-liners that rely on `jq` silently no-op. Use PowerShell
-(`ConvertFrom-Json`) or sed/grep for JSON parsing. (Bit us setting up the PreCompact hook.)
-
-### Handoff / save-state system (global, set up 2026-06-27)
-- `/handoff` command → `~/.claude/commands/handoff.md`: regenerates THIS file + writes a
-  dated `handoff-<date>.md` into the project `memory/` dir. Run it on "save state".
-- PreCompact hook in `~/.claude/settings.json` → `~/.claude/hooks/precompact-backup.ps1`
-  copies the transcript to `~/.claude/handoff-backups/` before every compaction (raw
-  safety net). If a compaction yields no backup file, open `/hooks` or restart to reload.
-- Global protocol in `~/.claude/CLAUDE.md`. The "~50% proactive" trigger is best-effort
-  only — there's no real context-% signal.
+### Other standing gotchas
+- World Bank Pink Sheet ends **2024-12** by decision (a two-source seam would risk the
+  lag/Granger/CCM work that is the moat). Disclosed on page 04.
+- Commodity moves on page 06 are gated to landmark events only.
+- `git pull --rebase` before pushing: the monthly cron commits to `master` unattended.
+- `.claude/data/` holds plugin sqlite scratch DBs — gitignored.
+- **jq is NOT installed.** Use PowerShell `ConvertFrom-Json` or sed/grep.
+- Design mockups live in gitignored `.superpowers/brainstorm/`.
