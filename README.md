@@ -18,7 +18,7 @@
 
 ### **▶ [Open the live dashboard →](https://huggingface.co/spaces/DogInfantry/enso-macro-risk-desk)**
 
-**[Live Demo](https://huggingface.co/spaces/DogInfantry/enso-macro-risk-desk) · [The Moat](#-the-moat-causal-rigor) · [Screenshots](#-screenshots) · [11 Pages](#-the-eleven-pages) · [Methodology](docs/METHODOLOGY.md) · [Run It](#-run-it-locally) · [Deploy](#-deployment) · [FAQ](#-faq)**
+**[Live Demo](https://huggingface.co/spaces/DogInfantry/enso-macro-risk-desk) · [The Moat](#-the-moat-causal-rigor) · [Screenshots](#-screenshots) · [14 Pages](#-the-fourteen-pages) · [Methodology](docs/METHODOLOGY.md) · [Run It](#-run-it-locally) · [Deploy](#-deployment) · [FAQ](#-faq)**
 
 </div>
 
@@ -28,7 +28,7 @@
 
 The **ENSO Macro Risk Desk** is a production-grade, open-source Python dashboard that answers one question for a commodity / macro analyst or climate-aware portfolio manager: **when the El Niño–Southern Oscillation (ENSO) cycle shifts, what commodity and sector exposure should you reposition — and which of those links survive causal testing?**
 
-It ingests canonical ENSO data directly from **NOAA CPC** (the Oceanic Niño Index), **ERSSTv5 sea-surface-temperature grids**, the **World Bank Pink Sheet** commodity database, and **IMD monsoon** records. It then runs a **dual-model forecasting engine** (SARIMA + PyTorch LSTM) and a **causal-inference engine** (Granger causality + Convergent Cross Mapping) across **eleven interactive pages** — a dark, data-dense terminal UI, **no API keys required to start.**
+It ingests canonical ENSO data directly from **NOAA CPC** (the Oceanic Niño Index), **ERSSTv5 sea-surface-temperature grids**, the **World Bank Pink Sheet** commodity database, and **IMD monsoon** records. It then runs a **dual-model forecasting engine** (SARIMA + PyTorch LSTM) and a **causal-inference engine** (Granger causality + Convergent Cross Mapping) across **fourteen interactive pages** — a dark, data-dense terminal UI, **no API keys required to start.**
 
 Every weight, threshold and known limit is written down in **[`docs/METHODOLOGY.md`](docs/METHODOLOGY.md)** — rendered in-app as page 09 and enforced against the code by a test, so the published document cannot drift from what actually runs.
 
@@ -41,7 +41,7 @@ The product philosophy is **describe → prescribe**: every region and commodity
 - 🔬 **Causal rigor as the moat** — Granger + Convergent Cross Mapping (CCM) separate *real* ENSO→price links from spurious ones. Most don't survive — and that's the honest headline.
 - 📈 **12-month forecasts** — SARIMA + LSTM ensemble, walk-forward backtested, beating persistence at all 12 leads.
 - 🛰️ **Live data** — NOAA CPC ONI + ENSO advisory fetched at runtime; ERSSTv5 SST grids; 71 World Bank commodities.
-- 🇮🇳 **Region deep-dives** — India (ENSO × Indian Ocean Dipole → monsoon → food CPI) and SE Asia (palm oil), each ending in a desk view.
+- 🇮🇳 **Five region deep-dives** — India (ENSO × Indian Ocean Dipole → monsoon → food CPI), SE Asia (palm oil), Brazil (coffee), Australia (wheat) and Peru (fishmeal), each ending in a computed desk view — including the ones where the honest view is *no trade*.
 - 🚀 **Live & auto-deployed** — running on Hugging Face Spaces, CI/CD from GitHub.
 
 ---
@@ -99,7 +99,7 @@ Anyone can plot a correlation between El Niño and cocoa prices. The hard — an
 - **Convergent Cross Mapping / CCM** (nonlinear, Sugihara et al. *Science* 2012): does cross-map skill *rise and converge* with library size in **one direction only**? Self-coded via simplex projection — no `pyEDM` dependency.
 - **Phase-randomized surrogate significance** (Ebisuzaki): does that skill beat a null built from the ONI's *own power spectrum* with the phases scrambled? This is the test that matters, because cross-map skill runs high between **any** two smooth seasonal series — two *independent* sine-plus-noise series score ρ ≈ 0.83 in this engine.
 
-**The result is deliberately humbling, and got more so.** Of the six headline ONI→commodity-**price** links, **not one survives** — all six are *weak / confounded*. Palm oil and wheat read *moderate* until they were tested against the null (p = 0.15 and p = 0.47). The sharpest lesson is Robusta: it has the **highest** raw ρ on the board at 0.32 and the **worst** p-value at 0.976, against a null that averages ρ 0.23 on its own. That ρ 0.32 was previously quoted here as the desk's strongest causal evidence; it is indistinguishable from chance. So the takeaway the desk leads with is:
+**The result is deliberately humbling, and got more so.** Of the seven ONI→commodity-**price** links tested, **not one survives** — all are *weak / confounded*. Palm oil and wheat read *moderate* until they were tested against the null (p = 0.15 and p = 0.47). The sharpest lesson is Robusta: it has the **highest** raw ρ on the board at 0.32 and the **worst** p-value at 0.976, against a null that averages ρ 0.23 on its own. That ρ 0.32 was previously quoted here as the desk's strongest causal evidence; it is indistinguishable from chance. The best link is Peru/fishmeal — 21 of 24 Granger lags, ρ 0.29 against a 0.10 null — and at **p = 0.078** it still misses the bar and stays *weak*. So the takeaway the desk leads with is:
 
 > **Most ENSO→commodity-price trades the market makes don't survive causal testing.** The clean ENSO signal lives on the **climate & production** side — the monsoon and Maritime-Continent drought we *prove* in the region deep-dives — not in noisy monthly prices.
 
@@ -107,7 +107,7 @@ That "misattribution guard" — showing the *computed* verdict instead of an ass
 
 ---
 
-## 🗂️ The Eleven Pages
+## 🗂️ The Fourteen Pages
 
 | # | Page | What it does |
 |:-:|------|------|
@@ -122,6 +122,9 @@ That "misattribution guard" — showing the *computed* verdict instead of an ass
 | **08** | 🌴 SE Asia deep-dive | Palm oil; the ENSO-premium story fails its own composite |
 | **09** | 📐 Methodology | Renders [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) directly — one source of truth, no second copy to drift |
 | **10** | 🩺 Source Status | Per-feed freshness, measured **net of structural label lag** — leads with "Behind", not "Age" |
+| **11** | 🇧🇷 Brazil deep-dive | Arabica; the honest **no-trade** region — the phase composite hints at an El Niño premium, the lag profile finds nothing (peak r ≈ −0.07, on the window edge) |
+| **12** | 🇦🇺 Australia deep-dive | Wheat; the drought is real and the **price sign is inverted** (r = −0.27 at 4 mo) — correct physics, wrong instrument |
+| **13** | 🇵🇪 Peru deep-dive | Fishmeal; the original El Niño and the desk's **best near-miss** — 21/24 Granger lags, ρ 0.29 vs a 0.10 null, surrogate p = 0.078 |
 
 **916 ENSO months · 42 events detected · 71 commodities · 2°×2° global SST grids from 1854 · 124 years of gridded Indian monsoon · 12-month forecast horizon · zero API keys required.**
 
@@ -191,7 +194,7 @@ pip install -r requirements.txt
 python data/ingest/oni_fetcher.py -v
 python data/ingest/pink_sheet.py -v
 
-# 4a — serve the whole site (landing at / + all 10 sub-pages) via the unified entry point
+# 4a — serve the whole site (landing at / + all 13 sub-pages) via the unified entry point
 python app.py                   # → http://localhost:5006
 
 # 4b — or serve a single page

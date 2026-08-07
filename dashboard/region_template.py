@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
+import numpy as np
 import pandas as pd
 import panel as pn
 import plotly.graph_objects as go
@@ -115,6 +116,77 @@ class RegionConfig:
     footer: str
     econ_takeaway: str = ("The price link is causal and lagged — position during the season, "
                           "ahead of the price response.")
+
+
+# ---- reusable climate exhibits ------------------------------------------
+# India and SE Asia each hand-rolled their climate view because each had a genuinely
+# region-specific analysis (ENSO x IOD; the palm composite). The remaining regions do not,
+# and three more copies of the same twenty lines would be three places for the composite
+# to drift. These are the generic exhibits: one asks "does the phase matter at all", the
+# other "at what lag" — the whole question for a region whose story is timing.
+
+def phase_composite(commodity: str) -> tuple[go.Figure, dict]:
+    """Mean YoY return of ``commodity`` by ENSO phase, computed from the caches."""
+    from theme import load_commodities, load_phases
+
+    comm = load_commodities()
+    px = (comm[comm["commodity"] == commodity].set_index("date")["price"]
+          .astype(float).sort_index())
+    yoy = px.pct_change(12) * 100.0
+    phases = load_phases()[["date", "phase_simple"]]
+    df = (pd.DataFrame({"date": yoy.index, "yoy": yoy.to_numpy()})
+          .merge(phases, on="date").dropna())
+    order = ["El Nino", "Neutral", "La Nina"]
+    means = df.groupby("phase_simple")["yoy"].mean().reindex(order)
+    counts = df.groupby("phase_simple")["yoy"].size().reindex(order)
+    colours = {"El Nino": COLORS["el_nino"], "La Nina": COLORS["la_nina"],
+               "Neutral": COLORS["neutral"]}
+    fig = go.Figure(go.Bar(
+        x=["El Niño", "Neutral", "La Niña"], y=means.values,
+        marker_color=[colours[p] for p in order],
+        text=[f"{v:+.1f}%" for v in means.values], textposition="outside"))
+    style_figure(fig, height=300, margin=dict(l=40, r=10, t=40, b=30),
+                 title=dict(text=f"{commodity} YoY return by ENSO phase",
+                            font=dict(size=14)),
+                 yaxis=dict(title="mean YoY %"))
+    return fig, {"means": {p: float(means[p]) for p in order},
+                 "n": {p: int(counts[p]) for p in order}}
+
+
+def lag_profile(commodity: str, *, max_lag: int = 24) -> tuple[go.Figure, dict]:
+    """Signed detrended correlation of ONI against ``commodity`` at lags 0..max_lag.
+
+    The composite collapses timing away — it asks whether El Niño months differ on
+    average, which for a supply shock that takes seasons to reach a price is the wrong
+    question. This keeps the lag axis, and the sign, so a peak can be read off it.
+    """
+    from lag_correlator import lagged_cross_correlation
+    from theme import load_oni
+
+    oni = load_oni().set_index("date")["oni"].astype(float).sort_index()
+    comm = load_commodities()
+    px = (comm[comm["commodity"] == commodity].set_index("date")["price"]
+          .astype(float).sort_index())
+    # Log price, matching positioning.signed_peak exactly. On raw price this chart put
+    # fishmeal's peak at r=+0.10/lag 7 while the desk badge beside it said +0.19/lag 8 —
+    # the same quantity, two answers, on one page. The estimator has to be the same one.
+    # Returns a Series indexed BY LAG, not a frame with a lag column.
+    prof = lagged_cross_correlation(
+        oni, np.log(px.where(px > 0)), max_lag=max_lag).dropna()
+    lags, r = prof.index.to_numpy(), prof.to_numpy()
+    peak_i = int(np.abs(r).argmax())
+    peak_lag, peak_r = int(lags[peak_i]), float(r[peak_i])
+
+    fig = go.Figure(go.Bar(
+        x=lags, y=r,
+        marker_color=[COLORS["la_nina"] if v > 0 else COLORS["el_nino"] for v in r]))
+    fig.add_hline(y=0, line=dict(color="rgba(138,148,166,0.5)", width=1))
+    style_figure(fig, height=300, margin=dict(l=40, r=10, t=40, b=30),
+                 title=dict(text=f"ONI → {commodity}: signed correlation by lag",
+                            font=dict(size=14)),
+                 yaxis=dict(title="detrended r"),
+                 xaxis=dict(title="lag (months, ONI leads)", dtick=3))
+    return fig, {"peak_lag": peak_lag, "peak_r": peak_r}
 
 
 # ---- shared builders -----------------------------------------------------

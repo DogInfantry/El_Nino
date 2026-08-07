@@ -39,6 +39,9 @@ _ROUTE = {
     "08_seasia": "08_seasia",
     "09_methodology": "09_methodology",
     "10_status": "10_status",
+    "11_brazil": "11_brazil",
+    "12_australia": "12_australia",
+    "13_peru": "13_peru",
 }
 
 

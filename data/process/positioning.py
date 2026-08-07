@@ -89,6 +89,7 @@ VERDICT_KEY = {
     "Coffee, Robusta": "Robusta",
     "Wheat, US HRW": "Wheat",
     "Soybeans": "Soybeans",
+    "Fish meal": "Fishmeal",
 }
 
 # Human pins. iso3 -> {"badge", "badge_cls", "reason"}. Rendered AS an override.

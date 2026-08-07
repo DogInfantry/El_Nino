@@ -27,6 +27,12 @@ CACHE_DIR = PROJECT_ROOT / "data" / "cache"
 LINKS = [
     ("Palm oil", "Palm oil"), ("Coffee, Robusta", "Robusta"), ("Sugar, world", "Sugar"),
     ("Soybeans", "Soybeans"), ("Cocoa", "Cocoa"), ("Wheat, US HRW", "Wheat"),
+    # Fishmeal is the one link whose mechanism is not mediated by global macro: warm
+    # coastal water suppresses the upwelling the Peruvian anchoveta feed on, the fishery
+    # closes, and the protein-feed price moves. If any ONI->price link is going to beat a
+    # seasonal null, physically it should be this one — so it is worth testing rather
+    # than assumed in either direction.
+    ("Fish meal", "Fishmeal"),
 ]
 ALPHA = 0.05
 

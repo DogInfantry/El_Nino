@@ -39,7 +39,7 @@ C_FULL_SCALE = 0.45   # |r| that maps to C = 1.0
 
 # Bump on ANY change to the weights, the scale, or a REGISTRY row, and add a changelog
 # entry in docs/METHODOLOGY.md. A test enforces that the doc quotes this exact string.
-EXPOSURE_VERSION = "exposure-v1 (2026-08-07)"
+EXPOSURE_VERSION = "exposure-v2 (2026-08-08)"
 
 # (iso3, country, dominant Pink-Sheet commodity, E [0-1 curated], sign)
 REGISTRY: list[tuple[str, str, str, float, str]] = [
@@ -54,6 +54,14 @@ REGISTRY: list[tuple[str, str, str, float, str]] = [
     ("AUS", "Australia", "Wheat, US HRW", 0.65, "dry"),
     ("ARG", "Argentina", "Soybeans", 0.70, "mixed"),
     ("USA", "United States", "Soybeans", 0.45, "mixed"),
+    # The only `wet` row, and deliberately so. Every other registry entry is a drought
+    # story where El Niño suppresses supply somewhere in the tropics. Peru is the
+    # opposite mechanism and the oldest one on record — the warm coastal water that gave
+    # the phenomenon its name shuts down the upwelling the anchoveta feed on, the fishery
+    # collapses, and fishmeal (the world's protein-feed input) spikes. It is the one
+    # region where the ENSO->price response should come out POSITIVE, which makes it a
+    # live check that the engine reads sign rather than assuming a direction.
+    ("PER", "Peru", "Fish meal", 0.85, "wet"),
 ]
 
 

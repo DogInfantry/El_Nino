@@ -1,6 +1,6 @@
 # Methodology — ENSO Macro Risk Desk
 
-`exposure-v1 (2026-08-07)` · `stance-v1 (2026-08-07)`
+`exposure-v2 (2026-08-08)` · `stance-v1 (2026-08-07)`
 
 Every number this desk shows is either **computed** from a public source or **curated** by
 hand. This page says which is which, publishes the weights, and states the limits. If a
@@ -44,7 +44,7 @@ implied otherwise would be selling a story the data does not support.
 
 ---
 
-## Exposure Index (`exposure-v1`)
+## Exposure Index (`exposure-v2`)
 
 A **constructed** score ranking ENSO-exposed agricultural exporters. Labelled as
 constructed everywhere it appears; it is not an observed quantity.
@@ -170,6 +170,7 @@ ignore that disagreement.
 | AUS | Wheat, US HRW | −0.270 | 4 mo | −0.397 | WEAK | ● WATCH | 1/4 |
 | MYS | Palm oil | −0.259 | contemp. | −0.306 | WEAK | ● WATCH | 1/4 |
 | IDN | Palm oil | −0.259 | contemp. | −0.306 | WEAK | ● WATCH | 1/4 |
+| PER | Fish meal | **+0.191** | 8 mo | +0.268 | WEAK | ● WATCH | 1/4 |
 | ARG | Soybeans | −0.173 | contemp. | −0.204 | WEAK | ● WATCH | 1/4 |
 | USA | Soybeans | −0.173 | contemp. | −0.204 | WEAK | ● WATCH | 1/4 |
 | GHA | Cocoa | −0.190 | 24 mo † | −0.188 | WEAK | ● WATCH | 1/4 |
@@ -178,6 +179,15 @@ ignore that disagreement.
 | THA | Sugar, world | −0.138 | 12 mo | −0.136 | WEAK | ● WATCH | 1/4 |
 | BRA | Coffee, Arabica | −0.066 | 24 mo † | −0.065 | UNTESTED | ● WATCH | 1/4 |
 | VNM | Coffee, Robusta | +0.038 | 12 mo | +0.037 | WEAK | ● WATCH | 1/4 |
+
+`PER` is the registry's only `wet`-sign row and the only **positive** `r_peak` on the desk.
+Every other entry is a drought story where El Niño suppresses supply; Peru is the opposite
+and oldest mechanism — warm coastal water shuts down the Humboldt upwelling, the anchoveta
+fishery closes, and fishmeal tightens about eight months later. It is the strongest link
+the desk has: **21 of 24 Granger lags** significant, cross-map `ρ = 0.29` against a
+seasonal null of `0.10` — and a surrogate `p = 0.078`, which does not clear `α = 0.05`.
+So it stays `WEAK · confounded` and `● WATCH`. Being the best available link does not earn
+a promotion; clearing the bar does.
 
 **Every row is now WATCH at conviction 1/4.** That is the surrogate gate arriving at the
 positioning layer: with no link clearing the causal test, nothing is entitled to carry a
@@ -345,6 +355,14 @@ quotes both current version constants, so the doc cannot silently drift from the
 
 ## Changelog
 
+- **`exposure-v2 (2026-08-08)`** — CCM verdicts now face a phase-randomized (Ebisuzaki)
+  surrogate null, 500 draws per link; `CAUSAL`/`MODERATE` additionally require `p < α`.
+  Palm oil and Wheat were `MODERATE` and no longer are, and **no link survives** — every
+  stance falls to `● WATCH`. The registry gains `PER` (Peru / fishmeal), its first `wet`
+  row and its only positive `r_peak`, plus fishmeal as a seventh tested link. Region pages
+  added for Brazil, Australia and Peru. The landing's causation headline was hard-coded
+  prose asserting `ρ 0.32` as the strongest evidence; it is now derived from the verdicts,
+  because that `ρ` turned out to be the board's *worst* result once tested (`p = 0.976`).
 - **`exposure-v1` / `stance-v1` (2026-08-07)** — first published methodology. Positioning
   engine replaces hand-typed desk stances; freshness is measured net of structural label
   lag. Fixed at introduction: the causal gate tested for a class literal (`strong`) that
