@@ -457,6 +457,61 @@ def test_verdict_requires_beating_the_surrogate_null() -> None:
     assert _verdict(g, ccm, None)[1] == "weak", "no surrogate dict must not open the gate"
 
 
+def test_emdat_parser_handles_both_export_vintages() -> None:
+    """EM-DAT renamed its columns in the 2023 rebuild; both files exist in the wild.
+
+    Also pins the two filters that keep the overlay honest. Earthquakes must not reach a
+    map of sea-surface temperature — co-plotting a tectonic event with an SST field is the
+    false association this desk spends its causal engine arguing against. And an event with
+    no start month must be dropped rather than defaulted to January, because a ±6-month
+    window query cannot tell an invented date from a real one.
+    """
+    import tempfile
+
+    sys.path.insert(0, str(_ROOT / "data" / "ingest"))
+    import emdat_disasters as em
+
+    modern = pd.DataFrame({
+        "DisNo.": ["2015-0001-IDN", "2015-0002-PER", "2015-0003-JPN", "2015-0004-CHL"],
+        "Disaster Group": ["Natural"] * 4,
+        "Disaster Type": ["Drought", "Flood", "Earthquake", "Wildfire"],
+        "ISO": ["IDN", "PER", "JPN", "CHL"],
+        "Country": ["Indonesia", "Peru", "Japan", "Chile"],
+        "Start Year": [2015, 2015, 2015, 2015],
+        "Start Month": [9, 3, 5, None],  # the Chile row has no month -> must be dropped
+        "Latitude": [-2.0, -9.1, 36.0, -33.0],
+        "Longitude": [117.0, -78.6, 138.0, -71.0],
+        "Total Deaths": [10, 20, 30, 40],
+        "Total Affected": [1000, 2000, 3000, 4000],
+        "Total Damage ('000 US$)": [100, 200, 300, 400],
+    })
+    legacy = modern.rename(columns={
+        "Disaster Type": "Dis Type", "Disaster Group": "Dis Group",
+        "Country": "Country Name", "Total Damage ('000 US$)": "Total Damages ('000 US$)",
+    })
+
+    for label, frame in (("modern", modern), ("legacy", legacy)):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "emdat.csv"
+            frame.to_csv(path, index=False)
+            df, stats = em.build(path)
+        kinds = set(df["dtype"])
+        assert "Earthquake" not in kinds, f"{label}: tectonic event reached an SST map"
+        assert kinds == {"Drought", "Flood"}, f"{label}: unexpected types {kinds}"
+        assert len(df) == 2, f"{label}: month-less row was not dropped ({len(df)} rows)"
+        assert str(df["date"].iloc[0].date()) == "2015-03-01", f"{label}: bad date build"
+        assert stats["geocoded"] == 2 and stats["geocoded_pct"] == 100.0, label
+        assert set(df.columns) >= {"date", "iso3", "dtype", "lat", "lon", "phase"}, label
+
+    # A missing export must fail with instructions, not a bare KeyError deep in pandas.
+    try:
+        em.find_export(_ROOT / "data" / "raw" / "definitely-not-here")
+    except FileNotFoundError as exc:
+        assert "public.emdat.be" in str(exc), "the error should say how to get the data"
+    else:
+        raise AssertionError("a missing EM-DAT export should raise")
+
+
 def _run() -> None:
     tests = [v for k, v in globals().items() if k.startswith("test_")]
     for t in tests:

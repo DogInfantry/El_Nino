@@ -113,7 +113,7 @@ That "misattribution guard" — showing the *computed* verdict instead of an ass
 |:-:|------|------|
 | **00** | **Macro Risk Desk** (landing) | Command-bar terminal: Niño-3.4 gauge · ONI trajectory · forecast cone · **ENSO Exposure Index** choropleth · most-exposed leaderboard · **causal-test strip** |
 | **01** | ENSO Monitor | Live ONI **+ RONI** dual series (1950–present), gauge, live NOAA advisory badge, **weekly Niño-3.4 nowcast** (~1-week lag), CSV export |
-| **02** | Global SST Map | ERSSTv5 2°×2° anomaly grids, flat + orthographic globe, teleconnection zones |
+| **02** | Global SST Map | ERSSTv5 2°×2° anomaly grids, flat + orthographic globe, teleconnection zones, optional **EM-DAT disaster bubbles** (±6 mo of the displayed field, sized by people affected) |
 | **03** | Forecast | SARIMA + LSTM + ensemble fan chart, CI bands, ACC-vs-lead skill, **observed-vs-forecast check** (live weekly SST beside the ensemble's nearest month), **analog panel** — nearest historical ENSO states by z-scored state vector, with their forward ONI paths |
 | **04** | Sector Impact | Detrended lag-correlation heatmap, ONI × 71 commodities, lags 0–24 mo |
 | **05** | Causation Explorer | Live **Granger + CCM**, both directions, plain-language verdict |
@@ -225,7 +225,8 @@ Panel/Bokeh is a long-running WebSocket server, so the app ships as a **Docker S
 | IMD **0.25° daily gridded rainfall, 1901–2024** → cos(lat) area-weighted all-India JJAS | India Met. Dept. | `imd_gridded.py` — **manual, ~3 GB of raw year-binaries**; the parquet is committed | None |
 | IMD 36-subdivision monthly rainfall (1901–2017) | India Met. Dept. | `monsoon_fetcher.py` — superseded for all-India, kept for provenance | None |
 | [SOI · Niño 1+2/3/4 · TNI · PDO · AMO · PNA · WP · DMI](https://psl.noaa.gov/data/climateindices/list/) | NOAA PSL | `climate_indices.py` — `coverage()` flags frozen upstreams, `model_features()` drops them before any model sees them | None |
-| [ERA5 reanalysis](https://cds.climate.copernicus.eu/) · [USDA NASS](https://quickstats.nass.usda.gov) · [EM-DAT](https://www.emdat.be/) | Copernicus / USDA / CRED | *(roadmap)* | Free |
+| [EM-DAT disaster events](https://www.emdat.be/) (drought · flood · wildfire · storm) | CRED / UCLouvain | `emdat_disasters.py` — **manual**: neither the portal nor the HDX mirror permits automated download, so you export once by hand | Free (registration) |
+| [ERA5 reanalysis](https://cds.climate.copernicus.eu/) · [USDA NASS](https://quickstats.nass.usda.gov) | Copernicus / USDA | *(roadmap)* | Free |
 
 ---
 

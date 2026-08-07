@@ -353,6 +353,34 @@ commit** — `EXPOSURE_VERSION` in `data/process/exposure_index.py`, `STANCE_VER
 `tests/test_core.py` enforces that this document names every `iso3` in the registry and
 quotes both current version constants, so the doc cannot silently drift from the code.
 
+### EM-DAT disaster overlay (page 02)
+
+Open access for non-commercial use with attribution, but **manual by design**: the
+`public.emdat.be` portal serves its export behind a registration form and the HDX mirror
+returns 403 to automated clients. Both are the data owner setting terms, so this project
+does not automate around either — the same call already made for the Bureau of Meteorology
+and IITM below.
+
+Only the ENSO-relevant natural hazards are kept: **drought, flood, wildfire, storm**.
+Earthquakes and volcanic events are in EM-DAT too and are excluded deliberately — plotting
+a tectonic event on a sea-surface-temperature field invites exactly the false association
+the causal engine exists to refuse.
+
+Two limits are published on the page itself rather than buried here:
+
+1. **Geocoding is partial and non-random.** EM-DAT carries point coordinates for a
+   minority of rows, and large, well-reported events are likelier to be located. The map
+   therefore under-draws small and poorly-documented disasters, and prints the geocoded
+   count and percentage next to the toggle.
+2. **Co-occurrence is not causation.** A disaster inside the ±6-month window sits near an
+   SST anomaly in time; that is the hypothesis, not the finding. The verdicts on pages 00
+   and 05 are where it gets tested.
+
+Events with no start month are dropped rather than defaulted to January — a manufactured
+date would be indistinguishable from a real one inside a window query.
+
+Attribution: EM-DAT, CRED / UCLouvain, Brussels, Belgium — https://www.emdat.be
+
 ## Changelog
 
 - **`exposure-v2 (2026-08-08)`** — CCM verdicts now face a phase-randomized (Ebisuzaki)

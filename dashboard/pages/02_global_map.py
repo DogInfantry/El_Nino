@@ -60,9 +60,67 @@ def _label(key: str) -> str:
     return MONTH_LABELS.get(key, f"{pd.Timestamp(key + '-01'):%b %Y} — latest")
 
 
-def build_map_pane(month_key: str, projection: str, show_zones: bool):
+# --- EM-DAT overlay -------------------------------------------------------
+# Optional cache: exists only after a manual EM-DAT export has been ingested (see
+# data/ingest/emdat_disasters.py). Absent, the page renders exactly as it did before.
+DISASTER_COLOR = {
+    "Drought": COLORS["el_nino"], "Wildfire": COLORS.get("amber", "#f4b13a"),
+    "Flood": COLORS["la_nina"], "Storm": COLORS["teal"],
+}
+# Events within this many months of the displayed SST field. One month is too narrow to
+# show anything; a whole year would let a La Niña-onset event sit on an El Niño map.
+WINDOW_MONTHS = 6
+
+
+def load_disasters() -> "pd.DataFrame | None":
+    path = CACHE_DIR / "emdat_disasters.parquet"
+    if not path.exists():
+        return None
+    return pd.read_parquet(path).dropna(subset=["lat", "lon"])
+
+
+DISASTERS = load_disasters()
+
+
+def add_disaster_bubbles(fig, month_key: str) -> int:
+    """Scatter geocoded EM-DAT events near ``month_key``. Returns how many were drawn."""
+    if DISASTERS is None or DISASTERS.empty:
+        return 0
+    import plotly.graph_objects as go
+
+    centre = pd.Timestamp(month_key + "-01")
+    lo = centre - pd.DateOffset(months=WINDOW_MONTHS)
+    hi = centre + pd.DateOffset(months=WINDOW_MONTHS)
+    sub = DISASTERS[(DISASTERS["date"] >= lo) & (DISASTERS["date"] <= hi)]
+    if sub.empty:
+        return 0
+
+    for dtype, grp in sub.groupby("dtype"):
+        affected = pd.to_numeric(grp["affected"], errors="coerce").fillna(0.0)
+        root = affected ** 0.5
+        # sqrt so one 10-million-affected event does not shrink every other bubble to a
+        # dot; the +6 floor keeps an event with no affected-count visible, because a
+        # missing figure is not the same thing as a small disaster.
+        size = 6 + 34 * (root / max(float(root.max()), 1.0))
+        fig.add_trace(go.Scattergeo(
+            lat=grp["lat"], lon=grp["lon"], mode="markers", name=str(dtype),
+            marker=dict(size=size, color=DISASTER_COLOR.get(str(dtype), COLORS["muted"]),
+                        opacity=0.55, line=dict(width=1, color="rgba(255,255,255,0.55)")),
+            customdata=list(zip(grp["country"].astype(str),
+                                grp["date"].dt.strftime("%b %Y"),
+                                affected, grp["phase"].astype(str))),
+            hovertemplate=("<b>%{customdata[0]}</b> — " + str(dtype) +
+                           "<br>%{customdata[1]} · ENSO phase %{customdata[3]}"
+                           "<br>affected %{customdata[2]:,.0f}<extra></extra>")))
+    return len(sub)
+
+
+def build_map_pane(month_key: str, projection: str, show_zones: bool,
+                   show_disasters: bool = False):
     sub = GRID[GRID["date"].dt.strftime("%Y-%m") == month_key]
     fig = build_sst_map(sub, projection=projection, show_zones=show_zones)
+    if show_disasters:
+        add_disaster_bubbles(fig, month_key)
     return pn.pane.Plotly(fig, config={"displayModeBar": True}, sizing_mode="stretch_width")
 
 
@@ -81,7 +139,14 @@ def build_app() -> pn.viewable.Viewable:
     zones = pn.widgets.Switch(name="Zones", value=True)
     zones_row = pn.Row(pn.pane.HTML("<b>Teleconnection zones</b>"), zones, width=210)
 
-    controls = pn.Column(month, pn.Row(projection, zones_row), css_classes=["enso-card"])
+    have_disasters = DISASTERS is not None and not DISASTERS.empty
+    disasters = pn.widgets.Switch(name="Disasters", value=False, disabled=not have_disasters)
+    dis_label = ("<b>EM-DAT events</b>" if have_disasters
+                 else "<b style='color:#8a94a6'>EM-DAT events (not ingested)</b>")
+    dis_row = pn.Row(pn.pane.HTML(dis_label), disasters, width=230)
+
+    controls = pn.Column(month, pn.Row(projection, zones_row, dis_row),
+                         css_classes=["enso-card"])
 
     legend = pn.pane.HTML(
         f"<div class='enso-card' style='font-size:12px'>"
@@ -93,8 +158,32 @@ def build_app() -> pn.viewable.Viewable:
         f"(<span style='color:{COLORS['el_nino']}'>warm</span> / "
         f"<span style='color:{COLORS['la_nina']}'>cool</span>)</div>")
 
-    mapping = pn.bind(build_map_pane, month_key=month, projection=projection, show_zones=zones)
+    mapping = pn.bind(build_map_pane, month_key=month, projection=projection,
+                      show_zones=zones, show_disasters=disasters)
     map_card = pn.Column(mapping, css_classes=["enso-card"])
+
+    if have_disasters:
+        n_total = len(pd.read_parquet(CACHE_DIR / "emdat_disasters.parquet"))
+        pct = 100.0 * len(DISASTERS) / max(n_total, 1)
+        emdat_txt = (
+            f"<b>EM-DAT bubbles show only the geocoded subset — {len(DISASTERS):,} of "
+            f"{n_total:,} events ({pct:.0f}%).</b> EM-DAT records point coordinates for a "
+            "minority of rows, and that minority is <i>not</i> a random sample: large, "
+            "well-reported events are likelier to be located, so the map under-draws small "
+            "and poorly-documented disasters. Bubbles are sized by people affected "
+            f"(√-scaled) and drawn within ±{WINDOW_MONTHS} months of the displayed field. "
+            "A disaster co-occurring with an SST anomaly is <b>not</b> evidence ENSO caused "
+            "it — that is the question pages 05 and 00 exist to test. "
+            "Source: EM-DAT, CRED / UCLouvain."
+        )
+    else:
+        emdat_txt = (
+            "<b>EM-DAT disaster bubbles are available but not ingested.</b> EM-DAT is open "
+            "access for non-commercial use, yet neither the portal nor the HDX mirror "
+            "permits automated download, so this feed is manual by design: register at "
+            "public.emdat.be, drop the export in <code>data/raw/emdat/</code>, and run "
+            "<code>data/ingest/emdat_disasters.py</code>."
+        )
 
     note = pn.pane.HTML(
         "<div class='enso-note'><b>Teleconnection zones are probabilistic "
@@ -103,7 +192,7 @@ def build_app() -> pn.viewable.Viewable:
         "and Madden–Julian Oscillation (MJO); any single event can differ. SST "
         "anomalies are ERSSTv5 (2°×2°) vs a 1991–2020 climatology — a different "
         "baseline than the ONI, so the Niño-3.4 box value here won't exactly "
-        "equal the ONI. EM-DAT disaster-event bubbles are a planned overlay.</div>")
+        f"equal the ONI.<br><br>{emdat_txt}</div>")
 
     return pn.Column(
         header, pn.Spacer(height=8), controls, pn.Spacer(height=6), legend,
