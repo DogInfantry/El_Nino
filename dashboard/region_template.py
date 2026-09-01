@@ -290,7 +290,7 @@ def _stance_line(s: dict) -> str:
     div = s.get("divergence")
     div_txt = ""
     if div is not None and not pd.isna(div):
-        div_txt = (f" Observed-minus-forecast <b>{float(div):+.2f} °C</b> — the models are "
+        div_txt = (f" Observed-minus-forecast <b>{float(div):+.2f} °C</b>, so the models are "
                    "under-calling the event; conviction is haircut when that gap exceeds 1.0.")
     override = ""
     if str(s.get("override_reason") or ""):
