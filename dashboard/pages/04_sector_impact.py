@@ -100,7 +100,7 @@ def build_charts(commodities: list[str], do_detrend: bool, highlight_lag: int):
 
     base = alt.Chart(matrix)
     heat = base.mark_rect().encode(
-        x=alt.X("lag:O", title="Lag (months) — ONI leads →"),
+        x=alt.X("lag:O", title="Lag (months), ONI leads →"),
         y=alt.Y("target:N", title=None, sort=order),
         color=alt.Color(
             "r:Q",
@@ -190,7 +190,7 @@ def build_app() -> pn.viewable.Viewable:
         "price. Agricultural impacts typically lag the ONI peak by 6–24 months. "
         "Causal direction is tested with Granger / CCM in the Causation explorer "
         "(Phase 2). Prices are nominal USD (World Bank Pink Sheet). "
-        "<b>Price coverage ends Dec 2024</b> — the World Bank's historical monthly "
+        "<b>Price coverage ends Dec 2024</b>: the World Bank's historical monthly "
         "workbook is a periodic snapshot (last stamped Jan 2025), not a live feed. "
         "Deliberate trade: this analysis needs decades of history for the lag "
         "structure, not the current month. The ENSO index itself is current.</div>"

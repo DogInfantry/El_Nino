@@ -32,10 +32,10 @@ from globe_layer import build_sst_map  # noqa: E402
 
 # Friendly labels for the snapshot months.
 MONTH_LABELS = {
-    "1982-12": "Dec 1982 — strong El Niño",
-    "1997-12": "Dec 1997 — super El Niño",
-    "2015-12": "Dec 2015 — super El Niño",
-    "2023-12": "Dec 2023 — strong El Niño",
+    "1982-12": "Dec 1982, strong El Niño",
+    "1997-12": "Dec 1997, super El Niño",
+    "2015-12": "Dec 2015, super El Niño",
+    "2023-12": "Dec 2023, strong El Niño",
 }
 
 RAW_CSS = f"""
@@ -57,7 +57,7 @@ MONTH_KEYS = sorted(GRID["date"].dt.strftime("%Y-%m").unique())
 
 
 def _label(key: str) -> str:
-    return MONTH_LABELS.get(key, f"{pd.Timestamp(key + '-01'):%b %Y} — latest")
+    return MONTH_LABELS.get(key, f"{pd.Timestamp(key + '-01'):%b %Y}, latest")
 
 
 # --- EM-DAT overlay -------------------------------------------------------
@@ -109,7 +109,7 @@ def add_disaster_bubbles(fig, month_key: str) -> int:
             customdata=list(zip(grp["country"].astype(str),
                                 grp["date"].dt.strftime("%b %Y"),
                                 affected, grp["phase"].astype(str))),
-            hovertemplate=("<b>%{customdata[0]}</b> — " + str(dtype) +
+            hovertemplate=("<b>%{customdata[0]}</b>: " + str(dtype) +
                            "<br>%{customdata[1]} · ENSO phase %{customdata[3]}"
                            "<br>affected %{customdata[2]:,.0f}<extra></extra>")))
     return len(sub)
@@ -166,14 +166,14 @@ def build_app() -> pn.viewable.Viewable:
         n_total = len(pd.read_parquet(CACHE_DIR / "emdat_disasters.parquet"))
         pct = 100.0 * len(DISASTERS) / max(n_total, 1)
         emdat_txt = (
-            f"<b>EM-DAT bubbles show only the geocoded subset — {len(DISASTERS):,} of "
+            f"<b>EM-DAT bubbles show only the geocoded subset, {len(DISASTERS):,} of "
             f"{n_total:,} events ({pct:.0f}%).</b> EM-DAT records point coordinates for a "
             "minority of rows, and that minority is <i>not</i> a random sample: large, "
             "well-reported events are likelier to be located, so the map under-draws small "
             "and poorly-documented disasters. Bubbles are sized by people affected "
             f"(√-scaled) and drawn within ±{WINDOW_MONTHS} months of the displayed field. "
             "A disaster co-occurring with an SST anomaly is <b>not</b> evidence ENSO caused "
-            "it — that is the question pages 05 and 00 exist to test. "
+            "it, that is the question pages 05 and 00 exist to test. "
             "Source: EM-DAT, CRED / UCLouvain."
         )
     else:
@@ -190,7 +190,7 @@ def build_app() -> pn.viewable.Viewable:
         "tendencies, not guarantees.</b> They show the <i>typical</i> El Niño "
         "drought/wet response and are modulated by the Indian Ocean Dipole (IOD) "
         "and Madden–Julian Oscillation (MJO); any single event can differ. SST "
-        "anomalies are ERSSTv5 (2°×2°) vs a 1991–2020 climatology — a different "
+        "anomalies are ERSSTv5 (2°×2°) vs a 1991–2020 climatology, a different "
         "baseline than the ONI, so the Niño-3.4 box value here won't exactly "
         f"equal the ONI.<br><br>{emdat_txt}</div>")
 

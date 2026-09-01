@@ -13,9 +13,9 @@ type DeskState = {
 };
 
 const STATES: Record<string, DeskState> = {
-  live: { cls: "pill live", label: "LIVE", note: "desk is warm — opens instantly" },
-  warming: { cls: "pill", label: "WARMING…", note: "free-tier host waking up — ~30s" },
-  offline: { cls: "pill", label: "OFFLINE", note: "host is down — the launch button may not respond" },
+  live: { cls: "pill live", label: "LIVE", note: "desk is warm, opens instantly" },
+  warming: { cls: "pill", label: "WARMING…", note: "free-tier host waking up, about 30s" },
+  offline: { cls: "pill", label: "OFFLINE", note: "host is down, the launch button may not respond" },
 };
 
 /**
@@ -23,7 +23,7 @@ const STATES: Record<string, DeskState> = {
  * - The hidden iframe GET is what actually wakes a sleeping Space, so it's
  *   warm by the time the visitor clicks LAUNCH.
  * - The pill is driven by the HF runtime API (CORS-enabled), NOT the iframe
- *   load event — cross-origin `load` fires even on a 503 error page, so it
+ *   load event, because cross-origin `load` fires even on a 503 error page, so it
  *   cannot distinguish LIVE from down.
  */
 function useDeskStatus(): DeskState {
@@ -87,7 +87,7 @@ export default function Home() {
         </h1>
         <p className="thesis">
           When the ENSO cycle shifts: which commodity &amp; sector exposures to
-          reposition &mdash; and which ENSO&rarr;price links are causally real
+          reposition, and which ENSO&rarr;price links are causally real
           vs. spurious. ONI/RONI monitoring &middot; SARIMA+LSTM forecasts
           &middot; Granger + CCM causal testing.
         </p>
@@ -103,7 +103,7 @@ export default function Home() {
         <a className="shot" href={APP} aria-label="Open the live desk">
           <img
             src="/assets/desk-landing.png"
-            alt="ENSO Macro Risk Desk — landing: ONI gauge, forecast cone, exposure choropleth, causation strip"
+            alt="ENSO Macro Risk Desk landing: ONI gauge, forecast cone, exposure choropleth, causation strip"
           />
         </a>
       </section>
@@ -128,7 +128,7 @@ export default function Home() {
           <img src="/assets/causation.png" alt="Causation explorer" loading="lazy" />
           <div className="label">
             <b>Causation Explorer</b>
-            <span>Granger + CCM &mdash; the misattribution guard</span>
+            <span>Granger + CCM, the misattribution guard</span>
           </div>
         </a>
         <a className="card" href={`${APP}07_india`}>
@@ -142,7 +142,7 @@ export default function Home() {
 
       <footer>
         <span>
-          ENSO Macro Risk Desk &mdash; portfolio project by{" "}
+          ENSO Macro Risk Desk, portfolio project by{" "}
           <a href="https://github.com/DogInfantry">Anklesh Rawat</a>
         </span>
         <span>

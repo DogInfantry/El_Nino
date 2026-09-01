@@ -1,4 +1,4 @@
-"""ENSO Monitor — live ONI time series, advisory badge, and Niño-3.4 gauge.
+"""ENSO Monitor – live ONI time series, advisory badge, and Niño-3.4 gauge.
 
 The visual MVP of the platform. Run with::
 
@@ -129,7 +129,7 @@ def build_app() -> pn.viewable.Viewable:
     # Current phase/intensity from the labeled record (live data, not hardcoded).
     in_event = pd.notna(latest.get("event_id"))
     simple_phase = latest["phase_simple"]
-    intensity = latest["intensity"] if in_event else "—"
+    intensity = latest["intensity"] if in_event else "–"
     phase_color = {
         "El Nino": COLORS["el_nino"],
         "La Nina": COLORS["la_nina"],
@@ -148,7 +148,7 @@ def build_app() -> pn.viewable.Viewable:
             else "La Niña conditions" if latest_value <= -0.5
             else "ENSO-Neutral"
         )
-        synopsis = "Live advisory unavailable — status derived from latest ONI."
+        synopsis = "Live advisory unavailable, status derived from latest ONI."
         adv_source = "Derived from latest ONI (advisory feed unreachable)"
 
     badge_color = _badge_color(status_text)
@@ -174,9 +174,9 @@ def build_app() -> pn.viewable.Viewable:
             f"{latest_value - latest_roni:+.2f}°C vs ONI (warming removed)",
             COLORS["el_nino"])
     else:
-        roni_card = _stat_card("Latest RONI", "—", "run roni_calculator", COLORS["muted"])
+        roni_card = _stat_card("Latest RONI", "–", "run roni_calculator", COLORS["muted"])
 
-    # Live weekly Niño-3.4 — the freshest reading available (~1 week behind), shown
+    # Live weekly Niño-3.4 – the freshest reading available (~1 week behind), shown
     # because the ONI's 3-month mean lags by design. A DIFFERENT quantity from the
     # ONI (single week, OISST): never read it against the ±0.5°C event thresholds.
     wk = latest_weekly()
@@ -186,7 +186,7 @@ def build_app() -> pn.viewable.Viewable:
             f"wk ctr. {wk.week_date:%d %b %Y} · 4-wk {wk.anom_4wk:+.2f}°C · "
             "not ONI-comparable", COLORS.get("amber", "#f4b13a"))
     else:
-        weekly_card = _stat_card("Niño-3.4 · weekly", "—",
+        weekly_card = _stat_card("Niño-3.4 · weekly", "–",
                                  "weekly feed unavailable", COLORS["muted"])
 
     cards = pn.Row(
@@ -244,7 +244,7 @@ def build_app() -> pn.viewable.Viewable:
         "<b>Index disclaimer.</b> Teal line = official CPC <b>ONI</b> (rolling 3-month "
         "Niño-3.4 anomaly). Dotted coral line = <b>RONI</b>, which NOAA adopted as the "
         "official ENSO index on 16 Feb 2026; it subtracts tropical-mean SST so recent "
-        "events register cooler (e.g. 2023–24 ≈0.6°C lower) — visible as RONI sitting "
+        "events register cooler (e.g. 2023–24 ≈0.6°C lower) – visible as RONI sitting "
         "below ONI in recent decades. Our RONI is <i>computed from ERSSTv5</i> on a fixed "
         "1991–2020 base (the official RONI uses ONI's rolling base), so it approximates "
         "rather than reproduces the operational value. The ONI 3-month mean also lags the "

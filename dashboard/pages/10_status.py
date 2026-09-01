@@ -1,8 +1,8 @@
-"""Page 10 — Data Status.
+"""Page 10 – Data Status.
 
 Every upstream feed, its cadence, and how late it actually is. Built because on
 2026-07-30 the desk *looked* stale (the ONI renders under its centre month) and nothing on
-screen could settle the question — hours went into proving the data was fine.
+screen could settle the question – hours went into proving the data was fine.
 
 The column that matters is **behind**, not **age**. ``age`` is what a reader sees ("this
 says May 2026"); ``behind`` subtracts the structural label lag and says whether that is
@@ -81,10 +81,10 @@ def _days(value, *, signed: bool = False) -> str:
 
     A source with no cache (the live advisory) has no age at all. pandas stores that as
     NaN in a float column, not None, so an ``is None`` test silently misses it and
-    ``int(NaN)`` raises — hence an explicit null check.
+    ``int(NaN)`` raises – hence an explicit null check.
     """
     if value is None or pd.isna(value):
-        return "—"
+        return "–"
     return f"{int(value):+d} d" if signed else f"{int(value)} d"
 
 
@@ -92,7 +92,7 @@ def _table() -> pn.pane.HTML:
     df = status_table()
     rows = []
     for _, r in df.iterrows():
-        latest = ("—" if pd.isna(r["latest"]) or r["latest"] is None
+        latest = ("–" if pd.isna(r["latest"]) or r["latest"] is None
                   else str(r["latest"])[:10])
         age = _days(r["age_days"])
         # "Behind" is only meaningful where a cadence is expected.
@@ -119,7 +119,7 @@ def build_app() -> pn.viewable.Viewable:
         "value carries a label ~75 days old. <b>Age</b> is that raw gap; <b>Behind</b> "
         "subtracts each source's structural label lag and is what actually indicates "
         "lateness. Sources marked <b>SNAPSHOT</b> or <b>STATIC</b> have deliberate cutoffs "
-        "(the World Bank Pink Sheet ends 2024-12; the IMD subdivision set ends 2017) — "
+        "(the World Bank Pink Sheet ends 2024-12; the IMD subdivision set ends 2017) – "
         "stated decisions, not neglect. <b>LIVE</b> sources are fetched at page load and "
         "cannot go stale.</div>")
     return pn.Column(
@@ -129,4 +129,4 @@ def build_app() -> pn.viewable.Viewable:
         sizing_mode="stretch_width")
 
 
-build_app().servable(title="Data Status — ENSO Macro Risk Desk")
+build_app().servable(title="Data Status, ENSO Macro Risk Desk")

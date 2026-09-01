@@ -79,4 +79,4 @@ def build_app() -> pn.viewable.Viewable:
         sizing_mode="stretch_width")
 
 
-build_app().servable(title="Methodology — ENSO Macro Risk Desk")
+build_app().servable(title="Methodology, ENSO Macro Risk Desk")

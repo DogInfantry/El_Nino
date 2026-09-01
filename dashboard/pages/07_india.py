@@ -87,7 +87,7 @@ def _regression_card() -> pn.pane.HTML:
         f"<span style='color:{COLORS['la_nina']}'>{REG['dmi_coef']:+.1f} %/unit</span>"
         f"<span class='pv'>p={REG['dmi_p']:.3f}</span><span class='sig'>{sig(REG['dmi_p'])}</span></div>"
         f"<div class='foot'>R² = {REG['r2']:.2f} · two SST indices explain ~⅓ of all-India monsoon "
-        "variance since 1901. The IOD coefficient is the offset — positive, and significant.</div></div></div>")
+        "variance since 1901. The IOD coefficient is the offset, positive, and significant.</div></div></div>")
 
 
 def india_climate() -> pn.viewable.Viewable:
@@ -96,7 +96,7 @@ def india_climate() -> pn.viewable.Viewable:
     tk = pn.pane.HTML(
         f"<div class='tk'><span class='tg'>TAKEAWAY</span><b>El Niño cuts the monsoon ~8%/°C; a "
         f"positive IOD adds back ~4%.</b> This year's +IOD is the difference between the {p80:.2f} and "
-        f"{p50:.2f} drought cell — the call hinges on whether it holds (SON DMI).</div>")
+        f"{p50:.2f} drought cell, the call hinges on whether it holds (SON DMI).</div>")
     return pn.Column(causal_chain(CFG),
                      pn.Row(pn.Column(heat, css_classes=["card"]), _regression_card()),
                      tk, sizing_mode="stretch_width")
@@ -112,11 +112,11 @@ CFG = RegionConfig(
     desk=dict(
         badge="▲ CONSTRUCTIVE", instruments="Sugar · Rice",
         sub="supply-driven · long bias H2 · conviction 3/4 · horizon 6–9 mo",
-        engine_read=(f"Engine read — current setup <b style='color:{COLORS['text']}'>El Niño + positive "
+        engine_read=(f"Engine read: current setup <b style='color:{COLORS['text']}'>El Niño + positive "
                      f"IOD</b> → modeled <b>P(deficient monsoon) ≈ {_P_NOW:.2f}</b> (vs {_P_NOIOD:.2f} "
                      "without the IOD hedge). That hedge is why conviction is 3/4, not 4/4."),
-        catalyst="<b>India rice &amp; sugar export policy</b> — a Q3 ban/curb tightens global supply (2023 playbook).",
-        risk="<b>IOD fades</b> — pushes the setup toward the 0.80 cell. Watch SON DMI."),
+        catalyst="<b>India rice &amp; sugar export policy</b>: a Q3 ban/curb tightens global supply (2023 playbook).",
+        risk="<b>IOD fades</b>: pushes the setup toward the 0.80 cell. Watch SON DMI."),
     kpis=[("Monsoon rainfall", "−12%", COLORS["el_nino"]), ("Food CPI", "+4.8%", COLORS["la_nina"]),
           ("Sugarcane yield", "−9%", COLORS["el_nino"]), ("Global exposure", "#2/10", COLORS["text"])],
     hotspots=[("Marathwada", 19.1, 76.6, -31), ("Rayalaseema", 14.6, 78.3, -28),
@@ -131,17 +131,17 @@ CFG = RegionConfig(
     history_rows=[
         ("1982–83", "+2.2", "bad", "−14%", "Major kharif shortfall; S &amp; W India drought"),
         ("1997–98", "+2.4", "ok", "~normal",
-         f"<b style='color:#c2cadb'>Broken link</b> — strong +IOD (SON DMI {_dmi_son(1997):+.2f}) offset it"),
+         f"<b style='color:#c2cadb'>Broken link</b>: strong +IOD (SON DMI {_dmi_son(1997):+.2f}) offset it"),
         ("2015–16", "+2.6", "bad", "−14%", f"Only modest +IOD (DMI {_dmi_son(2015):+.2f}) → drought"),
         ("2023–24", "+2.0", "mid", "−6%", "Rice export ban; sugar curbs → global ripple")],
-    econ_takeaway=("<b>The price link is causal and lagged ~7mo</b> — position during the monsoon "
+    econ_takeaway=("<b>The price link is causal and lagged ~7mo</b>: position during the monsoon "
                    "season, ahead of the Q4 price response."),
     footer=("<b>Sources:</b> ENSO/IOD computed from ERSSTv5 · monsoon = IMD <b>0.25° gridded</b> "
             "JJAS, area-weighted by cos(lat), 1950–2024 (1971–2020 normal 858.9 mm vs IMD's "
             "published ~868 mm; it approximates the official all-India series, it does not "
-            "reproduce it) · prices — World Bank Pink Sheet · causation — in-repo Granger+CCM. "
+            "reproduce it) · prices from the World Bank Pink Sheet · causation from the in-repo Granger+CCM engine. "
             f"&nbsp;<b>Caveat:</b> El Niño-cell n is small (~20 events); the n={int(REG['n'])} "
             "regression carries the significance. Not investment advice."),
 )
 
-build_region(CFG, climate_view=india_climate()).servable(title="India — ENSO Macro Risk Desk")
+build_region(CFG, climate_view=india_climate()).servable(title="India, ENSO Macro Risk Desk")

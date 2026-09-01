@@ -62,14 +62,14 @@ def seasia_climate() -> pn.viewable.Viewable:
         "<div class='lab'>Mechanism vs. the naive read <span class='real'>COMPUTED composite</span></div>"
         "Physically, El Niño shifts convection east → <b style='color:#e8edf5'>drought over Indonesia/"
         "Malaysia</b> → palm yield stress (1997 &amp; 2015 fire crises <i>did</i> spike CPO). <b "
-        "style='color:#e8edf5'>But the contemporaneous composite does NOT show an El Niño premium</b> — "
+        "style='color:#e8edf5'>But the contemporaneous composite does NOT show an El Niño premium</b>: "
         "La Niña actually reads higher, dominated by the 1973–74 global commodity/oil-crisis inflation. "
         "Raw co-movement confounds ENSO with macro cycles; the real link is supply-driven and "
-        "<b style='color:#e8edf5'>lagged</b> — tested in Economics.</div>")
+        "<b style='color:#e8edf5'>lagged</b>: tested in Economics.</div>")
     tk = pn.pane.HTML(
         f"<div class='tk'><span class='tg'>MISATTRIBUTION GUARD</span>The naive composite <b>fails the "
         f"El Niño-premium story</b> (La Niña {means['La Nina']:+.0f}% &gt; El Niño {means['El Nino']:+.0f}%, "
-        "driven by 1973–74 macro inflation — not ENSO). Like cocoa &amp; wheat: trust the lagged causal "
+        "driven by 1973–74 macro inflation, not ENSO). Like cocoa &amp; wheat: trust the lagged causal "
         "test, not the co-movement.</div>")
     return pn.Column(causal_chain(CFG), pn.Row(pn.Column(chart, css_classes=["card"]), note),
                      tk, sizing_mode="stretch_width")
@@ -82,12 +82,12 @@ CFG = RegionConfig(
     desk=dict(
         badge="● WATCH", badge_cls="watch", instruments="Palm oil",
         sub="naive bull case unproven · lagged-causal only · conviction 2/4 · horizon 6–12 mo",
-        engine_read=("Engine read — the <b>naive ENSO-phase composite does NOT confirm</b> an El Niño palm "
+        engine_read=("Engine read: the <b>naive ENSO-phase composite does NOT confirm</b> an El Niño palm "
                      "premium (La Niña reads higher, a 1973–74 macro-inflation artifact). The documented "
-                     "supply link (1997/2015 fire spikes) is <b>lagged</b> — so the verdict hinges on the "
+                     "supply link (1997/2015 fire spikes) is <b>lagged</b>, so the verdict hinges on the "
                      "live Granger/CCM in Economics, not the raw co-movement."),
         catalyst="<b>Indonesian export levy / biodiesel mandate</b> shifts on a genuine supply scare.",
-        risk="<b>The ENSO→palm link is weaker / noisier than consensus</b> — the composite already says so."),
+        risk="<b>The ENSO→palm link is weaker / noisier than consensus</b>: the composite already says so."),
     kpis=[("MC rainfall (El Niño)", "−18%", COLORS["el_nino"]), ("1997/2015 CPO", "spiked", COLORS["la_nina"]),
           ("Fire/haze risk", "High", COLORS["el_nino"]), ("Composite premium", "unproven", AMBER)],
     hotspots=[("Sumatra", -0.5, 101.5, -20), ("Kalimantan", -1.0, 113.5, -22),
@@ -103,12 +103,12 @@ CFG = RegionConfig(
         ("2015–16", "+2.6", "bad", "severe", "Major drought + fire crisis; CPO rallied into 2016"),
         ("2018–19", "+0.8", "mid", "mild", "Weak El Niño; muted supply hit"),
         ("2023–24", "+2.0", "mid", "moderate", "Dry skew; supportive for CPO vs trend")],
-    econ_takeaway=("<b>Palm oil is the trade</b> — the ENSO→price link is supply-driven and lags the "
+    econ_takeaway=("<b>Palm oil is the trade</b>: the ENSO→price link is supply-driven and lags the "
                    "drought; the CCM tests one-way forcing."),
-    footer=("<b>Sources:</b> ENSO — NOAA CPC (ERSSTv5) · palm-oil prices — World Bank Pink Sheet · "
-            "causation — in-repo Granger+CCM. &nbsp;<b>Caveat:</b> rainfall/hotspot figures are "
+    footer=("<b>Sources:</b> ENSO from NOAA CPC (ERSSTv5) · palm-oil prices from the World Bank Pink Sheet · "
+            "causation from the in-repo Granger+CCM engine. &nbsp;<b>Caveat:</b> rainfall/hotspot figures are "
             "illustrative pending Maritime-Continent precip ingestion; the ENSO-phase price composite "
             "and the causation test are computed. Not investment advice."),
 )
 
-build_region(CFG, climate_view=seasia_climate()).servable(title="SE Asia — ENSO Macro Risk Desk")
+build_region(CFG, climate_view=seasia_climate()).servable(title="SE Asia, ENSO Macro Risk Desk")

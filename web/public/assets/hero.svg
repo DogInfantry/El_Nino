@@ -28,7 +28,7 @@
 
   <!-- title block -->
   <text x="36" y="118" font-size="52" font-weight="800" fill="#e8edf5" letter-spacing="-1">ENSO Macro Risk Desk</text>
-  <text x="38" y="156" font-size="19" fill="#aeb8cc">When the ENSO cycle shifts, what commodity &amp; sector exposure do you reposition —</text>
+  <text x="38" y="156" font-size="19" fill="#aeb8cc">When the ENSO cycle shifts, what commodity &amp; sector exposure do you reposition,</text>
   <text x="38" y="182" font-size="19" fill="#aeb8cc">and which links are <tspan fill="#00d4b4" font-weight="700">causally real vs. spurious?</tspan></text>
 
   <!-- stack chips -->

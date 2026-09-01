@@ -1,4 +1,4 @@
-# Methodology — ENSO Macro Risk Desk
+# Methodology: ENSO Macro Risk Desk
 
 `exposure-v2 (2026-08-08)` · `stance-v1 (2026-08-07)`
 
@@ -20,7 +20,7 @@ here has been validated against realised P&L, and no claim of predictive skill i
 the positioning layer.
 
 The honest headline from our own data: **ENSO → commodity-*price* links do not survive
-causal testing.** Of six tested links, **none** clears the bar — all six are WEAK ·
+causal testing.** Of seven tested links, **none** clears the bar. All seven are WEAK ·
 confounded once cross-map skill is measured against a phase-randomized null that preserves
 each series' own seasonality. The clean, strong ENSO signal lives on the climate and production side
 (monsoon rainfall, Maritime Continent drought), not in noisy monthly prices. Any page that
@@ -37,8 +37,8 @@ implied otherwise would be selling a story the data does not support.
 | ENSO phases, event tiers | computed | in-repo from the ONI |
 | SARIMA / LSTM / ensemble forecasts | computed | in-repo |
 | Granger + CCM verdicts | computed | in-repo |
-| Exposure Index — factor `C` | computed | peak lagged correlation |
-| Exposure Index — factor `E` | **curated** | public production/export shares |
+| Exposure Index, factor `C` | computed | peak lagged correlation |
+| Exposure Index, factor `E` | **curated** | public production/export shares |
 | Positioning badge, conviction, horizon | computed | this page's rules |
 | Catalyst / key-risk text, hotspot annotations | **curated** | editorial |
 
@@ -53,11 +53,11 @@ constructed everywhere it appears; it is not an observed quantity.
 index = 100 * (0.5 * C + 0.5 * E)
 ```
 
-- **`C` — link strength (computed).** Peak `|r|` between the ONI and the country's dominant
+- **`C`, link strength (computed).** Peak `|r|` between the ONI and the country's dominant
   Pink Sheet commodity over lags 0–24 months, both series linearly detrended, scaled so
   `|r| = 0.45` maps to `C = 1.0` and clipped there. `|r| ≈ 0.45` is strong for a detrended
   ENSO–price link; the cap stops one outlier dominating the ranking.
-- **`E` — structural exposure (curated).** The country's reliance on that commodity —
+- **`E`, structural exposure (curated).** The country's reliance on that commodity,
   global market share × agricultural weight, 0–1, from public FAO/USDA production shares.
   **These are editorial judgements**, reviewed by hand, not fitted to anything.
 
@@ -84,7 +84,7 @@ Half the score is data, half is a documented opinion. Treat the ranking as opini
 
 ## Causal verdicts
 
-Granger causality (linear **detrend**, never first-differencing — differencing monthly data
+Granger causality (linear **detrend**, never first-differencing, because differencing monthly data
 is a high-pass filter that kills the low-frequency ENSO band and makes everything look
 null) plus self-coded Convergent Cross Mapping, both at `maxlag = 24`, `α = 0.05`.
 `sig` = the count of lags with `p < α`; `converges` = forward CCM skill rising with library
@@ -93,19 +93,19 @@ size; `rho_end` = forward `ρ` at the largest library.
 ### Surrogate significance (added 2026-08-07)
 
 A raw `ρ` is not evidence. Cross-map skill is high between **any** two smooth, seasonal
-series, coupled or not — two independent sine-plus-noise series sharing only an annual
+series, coupled or not: two independent sine-plus-noise series sharing only an annual
 cycle score `ρ ≈ 0.83` in this engine. A bare `rho_end ≥ 0.30` threshold was therefore
 measuring smoothness as much as coupling.
 
 Each link's forward `ρ` is now tested against **500 phase-randomized (Ebisuzaki)
-surrogates** of the ONI. The surrogate preserves the amplitude spectrum exactly — the
-annual cycle, the persistence and the smoothness all survive — and randomizes only the
+surrogates** of the ONI. The surrogate preserves the amplitude spectrum exactly, so the
+annual cycle, the persistence and the smoothness all survive, and it randomizes only the
 Fourier phases, destroying the phase-locking that carries coupling. Skill that beats that
 null is skill shared seasonality cannot explain.
 
 `p` is one-sided, `(k+1)/(n+1)` where `k` counts surrogates scoring at least the observed
 `ρ`. That form can never report `p = 0`, which a finite ensemble cannot justify. Only the
-ONI→target direction at the largest library is tested — that is the number the verdict
+ONI→target direction at the largest library is tested, which is the number the verdict
 rests on.
 
 | Verdict | Rule |
@@ -118,16 +118,16 @@ rests on.
 An untested link does not pass. A missing or failed surrogate run leaves `p = NaN`, and the
 gate treats that as failure, so a silent error downgrades rather than promotes.
 
-**Current results: none of the six links survives — every one is `WEAK · confounded`.**
+**Current results: none of the seven links survives. Every one is `WEAK · confounded`.**
 Palm oil and Wheat were `MODERATE` before the surrogate gate and no longer are (`p = 0.152`
 and `p = 0.473`). The most instructive case is Robusta: it carries the **highest** raw
 `ρ = 0.32` on the board and the **worst** `p = 0.976`, against a null averaging `ρ = 0.23`
-on its own — the number previously quoted as this desk's strongest causal evidence is
+on its own. The number previously quoted as this desk's strongest causal evidence is
 indistinguishable from chance. Only Soybeans beats its null (`p = 0.020`), and it fails
 Granger entirely (0 of 24 lags), so it stays `WEAK`.
 
 Granger over-detects (palm fires on 13 of 24 lags), CCM declines to confirm it, and the
-surrogate test now declines to confirm CCM — which is the whole reason all three are run.
+surrogate test now declines to confirm CCM, which is the whole reason all three are run.
 
 The live explorer on page 05 does **not** run surrogates: 500 extra cross-map passes per
 commodity is a precompute cost, not a page-load cost. Its verdicts use the pre-surrogate
@@ -139,10 +139,10 @@ rules and are exploratory; the landing strip carries the gated ones.
 
 Recomputed every month by `data/process/positioning.py`, after the verdicts it depends on.
 
-1. **`r_peak`, `L`** — signed Pearson r at the peak-`|r|` lag over 0–24 months, detrended.
+1. **`r_peak`, `L`.** Signed Pearson r at the peak-`|r|` lag over 0–24 months, detrended.
    The Exposure Index deliberately discards this sign; the stance needs it, because it says
    whether a warm ENSO pushes that price up or down.
-2. **`state`** — the forcing the lagged price will respond to, in ONI standard deviations:
+2. **`state`.** The forcing the lagged price will respond to, in ONI standard deviations:
    the mean of the latest observed ONI and the ensemble path over the next `L` months. A
    stance therefore inherits the forecast's decay instead of freezing today's reading.
 3. **`impact = r_peak × state`**.
@@ -155,13 +155,13 @@ Recomputed every month by `data/process/positioning.py`, after the verdicts it d
    untested 1); `+1` if `|impact| ≥ 0.60`; `−1` if observed-minus-forecast exceeds `1.0 °C`;
    clamped to 1–4.
 8. **Overrides.** `positioning.OVERRIDES` lets a human pin a badge. An override renders
-   *as* an override with its written reason — a formula cannot see an export-policy
+   *as* an override with its written reason, because a formula cannot see an export-policy
    catalyst, but it should not pretend the pin was computed either.
 
 ### Current output
 
 Regime: **WEAK EL NIÑO · 2026 · STRENGTHENING**. Observed-minus-forecast is **+1.01 °C**,
-past the 1.0 tolerance, so the conviction haircut is **active on every row** — the ensemble
+past the 1.0 tolerance, so the conviction haircut is **active on every row**, because the ensemble
 decays toward neutral while the observed weekly reads +2.15, and the desk does not get to
 ignore that disagreement.
 
@@ -182,30 +182,30 @@ ignore that disagreement.
 
 `PER` is the registry's only `wet`-sign row and the only **positive** `r_peak` on the desk.
 Every other entry is a drought story where El Niño suppresses supply; Peru is the opposite
-and oldest mechanism — warm coastal water shuts down the Humboldt upwelling, the anchoveta
+and oldest mechanism: warm coastal water shuts down the Humboldt upwelling, the anchoveta
 fishery closes, and fishmeal tightens about eight months later. It is the strongest link
 the desk has: **21 of 24 Granger lags** significant, cross-map `ρ = 0.29` against a
-seasonal null of `0.10` — and a surrogate `p = 0.078`, which does not clear `α = 0.05`.
+seasonal null of `0.10`, and a surrogate `p = 0.078`, which does not clear `α = 0.05`.
 So it stays `WEAK · confounded` and `● WATCH`. Being the best available link does not earn
 a promotion; clearing the bar does.
 
 **Every row is now WATCH at conviction 1/4.** That is the surrogate gate arriving at the
 positioning layer: with no link clearing the causal test, nothing is entitled to carry a
 direction, and a desk that still printed CAUTIOUS on palm oil would be asserting exactly
-the confidence its own evidence just withdrew. The flatness is the finding, not a bug —
+the confidence its own evidence just withdrew. The flatness is the finding, not a bug,
 the directional work belongs on the climate and production side, where the signal is real.
 
-These figures move every month. They are regenerated by the cron, not typed — the table is
+These figures move every month. They are regenerated by the cron, not typed, so the table is
 a snapshot of the committed cache, and the live values are on the desk itself.
 
 ### Known limitations
 
-- **† Boundary lags.** Cocoa and Arabica peak at lag 24 — the edge of the search window —
+- **† Boundary lags.** Cocoa and Arabica peak at lag 24, the edge of the search window,
   so the true peak may lie outside it and the number must not be read as a horizon. The UI
   renders these as `24 mo (window edge)`. Lag 0 renders as `contemporaneous`.
 - **`r_peak` is negative for 10 of 11 rows.** A warm ENSO maps to *lower* prices at the peak
   lag across almost the whole registry. Given that 9 of those links are WEAK or untested,
-  the honest reading is that the price channel is mostly confounded — not that El Niño is
+  the honest reading is that the price channel is mostly confounded, not that El Niño is
   broadly deflationary for softs.
 - Selecting the peak lag from 25 candidates inflates `|r|`; no multiple-comparison
   correction is applied, which is another reason the causal gate, not the correlation, sets
@@ -222,7 +222,7 @@ a snapshot of the committed cache, and the live values are on the desk itself.
   ~2.5 months old. Freshness is therefore measured against a per-source structural label lag
   (`expected_lag_days`, 75 for the ONI), never raw age. Getting this wrong is what caused a
   false staleness alarm on 2026-07-30.
-- **Weekly Niño-3.4 is a different quantity from the ONI** — different product, different
+- **Weekly Niño-3.4 is a different quantity from the ONI.** Different product, different
   cadence. It is never compared against the ONI's ±0.5 °C event thresholds. Only
   `wksst9120.for` is live; `wksst8110.for` is frozen at 27 Jan 2021 yet still returns HTTP
   200, so fetching it would silently ship years-old data.
@@ -230,7 +230,7 @@ a snapshot of the committed cache, and the live values are on the desk itself.
   risks corrupting the lag / Granger / CCM work that is this project's moat, in exchange for
   recency the analysis does not need. Disclosed on the Sector Impact page.
 - **India monsoon rainfall now comes from IMD's 0.25° gridded daily product**, 1950–2024,
-  area-weighted by cos(lat) over valid cells — see the validation note below. The old
+  area-weighted by cos(lat) over valid cells; see the validation note below. The old
   36-subdivision set (frozen 1901–2017, all-India as an *unweighted* subdivision mean) is
   retained only for the pre-1950 record.
 
@@ -241,14 +241,14 @@ Coverage: **1901–2024**, 124 years, area-weighted by cos(lat).
 | Check | Result |
 |---|---|
 | 1971–2020 all-India normal | **858.9 mm** vs IMD's published ~868 mm (within 1.1%) |
-| Old unweighted subdivision mean | ~1045 mm — about 20% too high |
+| Old unweighted subdivision mean | ~1045 mm, about 20% too high |
 | Year-to-year agreement with the subdivision series | **r = 0.945** |
-| Driest years on record | 1972 (−22.5%), 1918 (−21.8%), 2002 (−18.9%) — the canonical ones |
+| Driest years on record | 1972 (−22.5%), 1918 (−21.8%), 2002 (−18.9%), the canonical ones |
 | 1972 drought | −22.5% here vs ~−24% cited |
 | 2009 drought | −15.0% here vs ~−22% cited |
 
 **The record length changed a conclusion.** An initial 1950 cutoff was chosen on the
-reasoning that pre-1950 years have no ONI to pair with — but the India regression uses
+reasoning that pre-1950 years have no ONI to pair with, but the India regression uses
 ERSSTv5-derived Niño-3.4 and DMI, which run back to 1854, so the cutoff discarded usable
 sample. At n = 75 the IOD coefficient sat at p = 0.059 and read as marginal; over the full
 n = 124 it is **p = 0.0037**. The India desk view leans on an "IOD hedge", and at the
@@ -270,7 +270,7 @@ small (~20 El Niño events), so the regression, not the 3×3 grid, carries the s
 Averaging 36 subdivisions equally over-weights small very wet ones (the north-east, the
 Konkan coast); cos(lat) area weighting removes that bias, which is what the old r = 0.77
 caveat was really measuring. Departures use a **fixed 1971–2020 baseline**, IMD's current
-normal period — against a series' own mean they would not be comparable with any published
+normal period. Against a series' own mean they would not be comparable with any published
 figure.
 
 **These values are internally consistent and close to the official series, but they do not
@@ -314,32 +314,32 @@ remembered at each call site.
   through automated means, you should stop." That is the data owner declining automated
   access, so the index is out of scope rather than worked around. MJO is a daily
   sub-seasonal index and adds little to a monthly desk.
-- **ISRO / IIRS satellite archives** — see the section below.
+- **ISRO / IIRS satellite archives.** See the section below.
 
 ---
 
-## ISRO, IIRS and Indian satellite data — why they are not in the pipeline
+## ISRO, IIRS and Indian satellite data: why they are not in the pipeline
 
 A deliberate exclusion, recorded so it reads as a decision rather than an oversight.
 
 - **INSAT-3D / 3DR / 3DS are geostationary at 82°E.** A geostationary platform sees roughly
-  ±81° of longitude, giving a disk of about 1°E–163°E. **Niño-3.4 spans 170°W–120°W — over
+  ±81° of longitude, giving a disk of about 1°E–163°E. **Niño-3.4 spans 170°W–120°W, over
   the horizon.** India's meteorological satellites physically cannot observe the ENSO index
   region. They are impact-side instruments (Indian monsoon convection, Bay of Bengal, the
   western edge of the Maritime Continent), not ENSO-monitoring ones.
 - **MOSDAC** (ISRO/SAC) requires account signup and approval, credentials in a plain
   `config.json`, and caps downloads at 5 000 files/day. Products are scene-level.
 - **Bhoonidhi** (ISRO/NRSC) offers a cleaner STAC catalogue with JWT auth (20-minute tokens,
-  20 auth requests/hour/IP) over ResourceSat-2/2A, EOS-04, EOS-06 and Cartosat-1 — still
+  20 auth requests/hour/IP) over ResourceSat-2/2A, EOS-04, EOS-06 and Cartosat-1, still
   scene-level imagery, not time series.
 - **IIRS Dehradun is a training and capacity-building institute.** It publishes courses and
   outreach material, not machine-readable feeds. The actual ISRO data doors are MOSDAC,
   Bhuvan/Bhoonidhi and VEDAS.
 - **Used instead for India:** IMD gauge-based gridded rainfall and the IITM area-weighted
-  AISMR series — longer records, no authentication, no CI secret.
+  AISMR series: longer records, no authentication, no CI secret.
 - **What would justify revisiting:** an INSAT-3D OLR / Hydro-Estimator monsoon-convection
   panel, or Oceansat-3 OCM chlorophyll for the Peru upwelling collapse. Both need a MOSDAC
-  account and a CI secret, and both are impact-side — exactly where ISRO data is strong.
+  account and a CI secret, and both are impact-side, exactly where ISRO data is strong.
 
 ---
 
@@ -347,8 +347,8 @@ A deliberate exclusion, recorded so it reads as a decision rather than an oversi
 
 Every stance row carries `stance_version`. **Any change to the weights, thresholds, registry
 rows, gate rules, or conviction arithmetic must bump the version constant in the same
-commit** — `EXPOSURE_VERSION` in `data/process/exposure_index.py`, `STANCE_VERSION` in
-`data/process/positioning.py` — and add a changelog entry below.
+commit**: `EXPOSURE_VERSION` in `data/process/exposure_index.py`, `STANCE_VERSION` in
+`data/process/positioning.py`, and add a changelog entry below.
 
 `tests/test_core.py` enforces that this document names every `iso3` in the registry and
 quotes both current version constants, so the doc cannot silently drift from the code.
@@ -358,11 +358,11 @@ quotes both current version constants, so the doc cannot silently drift from the
 Open access for non-commercial use with attribution, but **manual by design**: the
 `public.emdat.be` portal serves its export behind a registration form and the HDX mirror
 returns 403 to automated clients. Both are the data owner setting terms, so this project
-does not automate around either — the same call already made for the Bureau of Meteorology
+does not automate around either, the same call already made for the Bureau of Meteorology
 and IITM below.
 
 Only the ENSO-relevant natural hazards are kept: **drought, flood, wildfire, storm**.
-Earthquakes and volcanic events are in EM-DAT too and are excluded deliberately — plotting
+Earthquakes and volcanic events are in EM-DAT too and are excluded deliberately, because plotting
 a tectonic event on a sea-surface-temperature field invites exactly the false association
 the causal engine exists to refuse.
 
@@ -376,22 +376,22 @@ Two limits are published on the page itself rather than buried here:
    SST anomaly in time; that is the hypothesis, not the finding. The verdicts on pages 00
    and 05 are where it gets tested.
 
-Events with no start month are dropped rather than defaulted to January — a manufactured
+Events with no start month are dropped rather than defaulted to January, since a manufactured
 date would be indistinguishable from a real one inside a window query.
 
-Attribution: EM-DAT, CRED / UCLouvain, Brussels, Belgium — https://www.emdat.be
+Attribution: EM-DAT, CRED / UCLouvain, Brussels, Belgium. https://www.emdat.be
 
 ## Changelog
 
-- **`exposure-v2 (2026-08-08)`** — CCM verdicts now face a phase-randomized (Ebisuzaki)
+- **`exposure-v2 (2026-08-08)`.** CCM verdicts now face a phase-randomized (Ebisuzaki)
   surrogate null, 500 draws per link; `CAUSAL`/`MODERATE` additionally require `p < α`.
-  Palm oil and Wheat were `MODERATE` and no longer are, and **no link survives** — every
+  Palm oil and Wheat were `MODERATE` and no longer are, and **no link survives**, every
   stance falls to `● WATCH`. The registry gains `PER` (Peru / fishmeal), its first `wet`
   row and its only positive `r_peak`, plus fishmeal as a seventh tested link. Region pages
   added for Brazil, Australia and Peru. The landing's causation headline was hard-coded
   prose asserting `ρ 0.32` as the strongest evidence; it is now derived from the verdicts,
   because that `ρ` turned out to be the board's *worst* result once tested (`p = 0.976`).
-- **`exposure-v1` / `stance-v1` (2026-08-07)** — first published methodology. Positioning
+- **`exposure-v1` / `stance-v1` (2026-08-07).** First published methodology. Positioning
   engine replaces hand-typed desk stances; freshness is measured net of structural label
   lag. Fixed at introduction: the causal gate tested for a class literal (`strong`) that
   `landing_causation` never emits, which would have muzzled any genuinely `CAUSAL` link.

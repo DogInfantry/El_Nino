@@ -119,7 +119,7 @@ def build_fan_chart(history: pd.DataFrame, forecasts: pd.DataFrame) -> go.Figure
             hovertemplate=ext["label"] + "<br>%{x|%b %Y}: ~%{y:+.1f}°C<extra></extra>"))
 
     style_figure(fig, height=480, margin=dict(l=60, r=30, t=50, b=90),
-        title=dict(text="ONI forecast fan chart — model spread to 12 months",
+        title=dict(text="ONI forecast fan chart, model spread to 12 months",
                    font=dict(size=16)),
         yaxis=dict(title="ONI anomaly (°C)", gridcolor="rgba(138,148,166,0.12)"),
         xaxis=dict(gridcolor="rgba(138,148,166,0.08)"),
@@ -141,7 +141,7 @@ def build_skill_chart(skill: pd.DataFrame) -> go.Figure:
             line=dict(color=color, width=2.2),
             hovertemplate=model + " lead %{x}mo<br>ACC %{y:.3f}<extra></extra>"))
     style_figure(fig, height=320, title=dict(
-        text="Forecast skill (ACC) vs lead — verified against persistence", font=dict(size=15)),
+        text="Forecast skill (ACC) vs lead, verified against persistence", font=dict(size=15)),
         yaxis=dict(title="Anomaly correlation (ACC)", range=[0, 1.02],
                    gridcolor="rgba(138,148,166,0.12)"),
         xaxis=dict(title="Lead (months)", dtick=1, gridcolor="rgba(138,148,166,0.08)"),
@@ -173,7 +173,7 @@ def build_variant_chart(df: pd.DataFrame) -> go.Figure:
             line=dict(color=colour, width=2.2),
             hovertemplate=label + " lead %{x}mo<br>ACC %{y:.3f}<extra></extra>"))
     style_figure(fig, height=300, title=dict(
-        text="Does the LSTM improve with more channels? — paired, identical span & seed",
+        text="Does the LSTM improve with more channels?, paired, identical span & seed",
         font=dict(size=15)),
         yaxis=dict(title="Anomaly correlation (ACC)", range=[0, 1.02],
                    gridcolor="rgba(138,148,166,0.12)"),
@@ -187,7 +187,7 @@ def _variant_card() -> pn.viewable.Viewable:
     path = CACHE_DIR / "skill_variants.parquet"
     if not path.exists():
         return pn.pane.HTML(
-            "<div class='enso-note'>Channel comparison not built — run "
+            "<div class='enso-note'>Channel comparison not built, run "
             "<code>forecasting/ml_models/lstm_exog.py</code>.</div>")
 
     df = pd.read_parquet(path)
@@ -201,16 +201,16 @@ def _variant_card() -> pn.viewable.Viewable:
     chart = pn.pane.Plotly(build_variant_chart(df),
                            config={"displayModeBar": True}, sizing_mode="stretch_width")
     note = pn.pane.HTML(
-        "<div class='enso-note'><b>The extra channels do not rescue the LSTM — they "
+        "<div class='enso-note'><b>The extra channels do not rescue the LSTM, they "
         "move where its skill sits.</b> Feeding it Niño-1+2/3/4, SOI, DMI, PNA and WP "
         f"<i>costs</i> ACC across leads 1–4 ({short:+.3f} mean), where ONI persistence "
         "already carries the forecast and the extra inputs are mostly noise. From lead 5 "
         f"out it gains ({long:+.3f} mean), holding ACC near 0.34–0.41 through months "
-        "8–12 while the ONI-only control collapses towards zero — the range past the "
+        "8–12 while the ONI-only control collapses towards zero, the range past the "
         "spring predictability barrier. Read it as a real but <b>sub-threshold</b> "
         f"signal: nothing beyond lead {last_useful} clears the 0.5 useful-skill line in "
         "<i>either</i> arm, so this does not extend the usable horizon and does not "
-        "change which model the ensemble averages. PDO and TNI are excluded — both run "
+        "change which model the ensemble averages. PDO and TNI are excluded, both run "
         "months behind, and the forward window needs every channel complete.</div>",
         sizing_mode="stretch_width")
     return pn.Row(pn.Column(chart, css_classes=["enso-card"]), note,
@@ -239,7 +239,7 @@ def build_analog_chart(df: pd.DataFrame) -> go.Figure:
         fig.add_hline(y=level, line=dict(color="rgba(138,148,166,0.35)", dash="dot"))
     style_figure(
         fig, height=330, margin=dict(l=50, r=14, t=44, b=42),
-        title=dict(text="What followed each analog — ONI path after the matched month",
+        title=dict(text="What followed each analog, ONI path after the matched month",
                    font=dict(size=14)),
         xaxis=dict(title="months after the analog"),
         yaxis=dict(title="ONI (°C)"),
@@ -282,7 +282,7 @@ def _analog_card() -> pn.viewable.Viewable:
     note = pn.pane.HTML(
         f"<div class='enso-note'><b>Analogs for {query:%b %Y}.</b> The five closest "
         "historical states, ranked by Euclidean distance over the ONI trajectory "
-        "(t−6…t), the Niño 1+2/3/4 pattern, SOI and DMI — all z-scored. "
+        "(t−6…t), the Niño 1+2/3/4 pattern, SOI and DMI, all z-scored. "
         f"<b>{strong} of {total}</b> went on to reach ONI ≥ +1.0; the rest faded. That "
         "split is the point: the mean of a bimodal set is an outcome that never occurred, "
         "so the paths are drawn individually rather than averaged. Neighbouring months are "
@@ -312,13 +312,13 @@ def build_app() -> pn.viewable.Viewable:
 
     warn = pn.pane.HTML(
         "<div class='enso-warn'><b>Never trust a single forecast.</b> The shaded "
-        "bands are prediction intervals; the spread <i>between</i> models — and "
+        "bands are prediction intervals; the spread <i>between</i> models, and "
         "between these statistical baselines and CPC's dynamical models (which "
-        "expect a stronger event) — is the real signal. Our linear/recurrent "
+        "expect a stronger event), is the real signal. Our linear/recurrent "
         "baselines mean-revert and under-call strong events; coupled dynamical "
         "models (and the ERA5 CNN track) capture growth dynamics they cannot. "
-        "Skill (ACC) typically falls below the useful 0.5 line beyond ~6–8 months "
-        "— the ENSO spring predictability barrier. Index: ONI (see Monitor for the "
+        "Skill (ACC) typically falls below the useful 0.5 line beyond ~6–8 months, "
+        "the ENSO spring predictability barrier. Index: ONI (see Monitor for the "
         "RONI caveat).</div>")
 
     # Live receipt for the under-calling caveat above: the newest OBSERVED weekly
@@ -335,8 +335,8 @@ def build_app() -> pn.viewable.Viewable:
             f"weekly Niño-3.4 anomaly <b>{wk.anom:+.1f}°C</b> (wk ctr. "
             f"{wk.week_date:%d %b %Y}, 4-wk {wk.anom_4wk:+.2f}°C) against this "
             f"ensemble's nearest month <b>{near}</b>. These are <i>not</i> the same "
-            "quantity — one is a single week of OISST, the other a 3-month-mean ONI "
-            "forecast — so read the gap as context for the under-calling noted above, "
+            "quantity, one is a single week of OISST, the other a 3-month-mean ONI "
+            "forecast, so read the gap as context for the under-calling noted above, "
             "not as a scored error.</div>")
     else:
         nowcast = pn.pane.HTML(

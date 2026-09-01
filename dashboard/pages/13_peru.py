@@ -52,18 +52,18 @@ def peru_climate() -> pn.viewable.Viewable:
         "<div class='card' style='font-size:12px;line-height:1.6;color:#c2cadb'>"
         "<div class='lab'>The one link that points up <span class='real'>COMPUTED</span></div>"
         f"Peak correlation is <b style='color:#e8edf5'>r = {lag['peak_r']:+.3f}</b> at "
-        f"<b style='color:#e8edf5'>{lag['peak_lag']} months</b> — {sign_word}, and the only "
+        f"<b style='color:#e8edf5'>{lag['peak_lag']} months</b>: {sign_word}, and the only "
         "meaningfully positive row in the registry. The sign is the mechanism showing "
         "through: warm water suppresses upwelling → the anchoveta biomass disperses and "
         "quotas are cut → fishmeal tightens, roughly two to three quarters later. The "
-        "composite is the weaker exhibit here, and shows why timing matters — El Niño months "
+        "composite is the weaker exhibit here, and shows why timing matters, El Niño months "
         f"average <b style='color:#e8edf5'>{m['El Nino']:+.1f}%</b> against La Niña's "
         f"<b style='color:#e8edf5'>{m['La Nina']:+.1f}%</b>, nearly a tie, because "
         "collapsing an 8-month lag into a contemporaneous average destroys the very signal "
         "the lag profile recovers.</div>")
     tk = pn.pane.HTML(
         "<div class='tk'><span class='tg'>HONEST NEAR-MISS</span>Granger fires on <b>21 of 24 "
-        "lags</b> — the strongest on the desk — and cross-map ρ is <b>0.29</b> against a "
+        "lags</b>: the strongest on the desk, and cross-map ρ is <b>0.29</b> against a "
         "phase-randomized null averaging <b>0.10</b>. But the surrogate p is <b>0.078</b>, "
         "which does not clear 0.05, so the verdict stays <b>WEAK</b> and the stance stays "
         "<b>WATCH</b>. This is the link most likely to be real, and the desk still will not "
@@ -74,15 +74,15 @@ def peru_climate() -> pn.viewable.Viewable:
 CFG = RegionConfig(
     name="PERU", flag="🇵🇪", iso3="PER", regime="WEAK EL NIÑO · 2026",
     thesis=("Warm coastal water shuts down the Humboldt upwelling, the anchoveta fishery "
-            "closes, and fishmeal tightens two to three quarters later — the oldest ENSO "
+            "closes, and fishmeal tightens two to three quarters later, the oldest ENSO "
             "impact on record and this desk's only positive-sign link."),
     desk=dict(
         badge="● WATCH", badge_cls="watch", instruments="Fish meal",
         sub="strongest Granger on the desk · surrogate p 0.078 · misses the bar",
-        engine_read=("Engine read — the only <b>positive</b> r_peak in the registry "
+        engine_read=("Engine read: the only <b>positive</b> r_peak in the registry "
                      "(<b>+0.19 at 8 months</b>), the highest Granger count anywhere "
                      "(<b>21/24 lags</b>), and cross-map ρ 0.29 against a 0.10 null. The "
-                     "surrogate test returns <b>p = 0.078</b>, so it is capped at WEAK — "
+                     "surrogate test returns <b>p = 0.078</b>, so it is capped at WEAK, "
                      "the closest thing to a real ONI→price link the desk has found."),
         catalyst="<b>IMARPE biomass survey and the quota decision</b> for the following season.",
         risk="<b>A near-miss is not a result.</b> p = 0.078 on 500 surrogates sits one "
@@ -105,11 +105,11 @@ CFG = RegionConfig(
         ("1982–83", "+2.2", "bad", "severe", "Catch fell sharply; fishmeal repriced"),
         ("1997–98", "+2.4", "bad", "severe", "Seasons cancelled; severe coastal flooding"),
         ("2015–16", "+2.6", "bad", "severe", "Quota cuts; fishmeal firm into 2016"),
-        ("2023–24", "+2.0", "bad", "severe", "First season cancelled — a live rerun")],
+        ("2023–24", "+2.0", "bad", "severe", "First season cancelled, a live rerun")],
     econ_takeaway=("<b>Direct mechanism, honest verdict.</b> Unmediated by global macro, "
-                   "which is exactly why it scores best — and it still fails the null at "
+                   "which is exactly why it scores best, and it still fails the null at "
                    "p = 0.078."),
-    footer=("<b>Sources:</b> ENSO — NOAA CPC (ERSSTv5) · fishmeal prices — World Bank Pink "
+    footer=("<b>Sources:</b> ENSO from NOAA CPC (ERSSTv5) · fishmeal prices from the World Bank Pink "
             "Sheet · lag profile, composite and surrogate-tested verdict computed in-repo. "
             "&nbsp;<b>Caveat:</b> coastal rainfall figures are illustrative pending South-"
             "American precip ingestion; IMARPE catch and quota data are <b>not</b> ingested, "
@@ -117,4 +117,4 @@ CFG = RegionConfig(
 )
 
 build_region(CFG, climate_view=peru_climate()).servable(
-    title="Peru — ENSO Macro Risk Desk")
+    title="Peru, ENSO Macro Risk Desk")

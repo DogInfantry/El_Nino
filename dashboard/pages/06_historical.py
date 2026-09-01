@@ -151,7 +151,7 @@ def _card(ev: pd.Series) -> str:
 
     cost_html = regions_html = ""
     if facts:
-        cost_html = (f"<div class='evt-cost'>💸 <b>{facts['cost']}</b> — {facts['note']}</div>")
+        cost_html = (f"<div class='evt-cost'>💸 <b>{facts['cost']}</b>: {facts['note']}</div>")
         regions_html = ("<div class='evt-regions'>🌍 " + " · ".join(facts["regions"]) + "</div>")
 
     return (
@@ -192,13 +192,13 @@ def build_app() -> pn.viewable.Viewable:
     note = pn.pane.HTML(
         "<div class='enso-note'>Events use the official ±0.5°C / 5-overlapping-season "
         "definition (ONI). <b>*RONI peak</b> is our ERSST-computed RONI at the event "
-        "centre (fixed 1991–2020 base) — note how recent strong events read cooler "
+        "centre (fixed 1991–2020 base), note how recent strong events read cooler "
         "under RONI. Commodity chips (shown only for landmark events with documented "
         "responses) give the <i>largest</i> move in the 18 months after the event end "
         "(World Bank Pink Sheet, nominal USD; data ends 2024-12 so the latest event's "
         "window is partial). Economic losses are ~5-year global GDP "
         "estimates; 21st-century cumulative ENSO losses are projected up to ~$84T. "
-        "Correlation ≠ causation — commodity moves have many drivers.</div>")
+        "Correlation ≠ causation, commodity moves have many drivers.</div>")
 
     return pn.Column(
         header, pn.Spacer(height=8), pn.Row(phase), pn.Spacer(height=8),

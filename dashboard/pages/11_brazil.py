@@ -38,7 +38,7 @@ def brazil_climate() -> pn.viewable.Viewable:
     comp_fig, comp = phase_composite(COMMODITY)
     lag_fig, lag = lag_profile(COMMODITY)
     m = comp["means"]
-    edge = " (window edge — the true peak may lie outside)" if lag["peak_lag"] == 24 else ""
+    edge = " (window edge, the true peak may lie outside)" if lag["peak_lag"] == 24 else ""
 
     charts = pn.Row(
         pn.Column(pn.pane.Plotly(comp_fig, config={"displayModeBar": False}),
@@ -51,7 +51,7 @@ def brazil_climate() -> pn.viewable.Viewable:
         f"The composite looks like a story: El Niño months average <b style='color:#e8edf5'>"
         f"{m['El Nino']:+.1f}%</b> YoY against La Niña's <b style='color:#e8edf5'>"
         f"{m['La Nina']:+.1f}%</b> (n={comp['n']['El Nino']}/{comp['n']['La Nina']} months). "
-        "Coffee bulls quote exactly this. But a composite has no time axis — it cannot "
+        "Coffee bulls quote exactly this. But a composite has no time axis, it cannot "
         "separate a drought transmitting into price from ENSO merely coinciding with a "
         "decade of coffee inflation. Put the lag axis back and the link collapses: peak "
         f"<b style='color:#e8edf5'>r = {lag['peak_r']:+.3f}</b> at "
@@ -61,7 +61,7 @@ def brazil_climate() -> pn.viewable.Viewable:
         "<div class='tk'><span class='tg'>MISATTRIBUTION GUARD</span>The frost risk that "
         "actually moves Arabica is a <b>mid-latitude cold-air outbreak</b>, not a tropical "
         "Pacific anomaly. Brazil earns its exposure score from structural share of world "
-        "supply, not from a demonstrated ENSO link — and the desk says so rather than "
+        "supply, not from a demonstrated ENSO link, and the desk says so rather than "
         "selling the composite.</div>")
     return pn.Column(causal_chain(CFG), charts, note, tk, sizing_mode="stretch_width")
 
@@ -73,12 +73,12 @@ CFG = RegionConfig(
     desk=dict(
         badge="● WATCH", badge_cls="watch", instruments="Coffee, Arabica",
         sub="no demonstrated ENSO link · structural exposure only",
-        engine_read=("Engine read — peak lagged correlation is <b>r ≈ −0.07 at the 24-month "
+        engine_read=("Engine read: peak lagged correlation is <b>r ≈ −0.07 at the 24-month "
                      "window edge</b>, the weakest in the registry, and the phase composite's "
                      "apparent El Niño premium does not survive putting time back on the "
                      "axis. Exposure here is <b>structural</b> (share of world supply), "
                      "not causal."),
-        catalyst="<b>A mid-latitude frost event in Minas Gerais</b> — which ENSO does not forecast.",
+        catalyst="<b>A mid-latitude frost event in Minas Gerais</b>: which ENSO does not forecast.",
         risk="<b>Trading this as an ENSO story.</b> The composite invites it; the lag profile refuses."),
     kpis=[("Peak |r|", "0.07", COLORS["muted"]), ("Peak lag", "24 mo †", AMBER),
           ("World Arabica share", "~1/3", COLORS["text"]),
@@ -96,11 +96,11 @@ CFG = RegionConfig(
     history_rows=[
         ("1997–98", "+2.4", "mid", "mixed", "Strong El Niño; Arabica fell through 1998"),
         ("2015–16", "+2.6", "mid", "mixed", "Cerrado drought, but price led by stocks"),
-        ("2021 frost", "n/a", "bad", "severe", "Price doubled — a NON-ENSO cold outbreak"),
+        ("2021 frost", "n/a", "bad", "severe", "Price doubled, a NON-ENSO cold outbreak"),
         ("2023–24", "+2.0", "mid", "mixed", "Rally driven by Robusta substitution, not ENSO")],
     econ_takeaway=("<b>The honest read is no trade.</b> The lag test finds nothing and the "
                    "peak sits on the window edge, so there is no horizon to position against."),
-    footer=("<b>Sources:</b> ENSO — NOAA CPC (ERSSTv5) · Arabica prices — World Bank Pink "
+    footer=("<b>Sources:</b> ENSO from NOAA CPC (ERSSTv5) · Arabica prices from the World Bank Pink "
             "Sheet · composite &amp; lag profile computed in-repo. &nbsp;<b>Caveat:</b> "
             "hotspot rainfall figures are illustrative pending South-American precip "
             "ingestion; the composite, the lag profile and the stance are computed. "
@@ -108,4 +108,4 @@ CFG = RegionConfig(
 )
 
 build_region(CFG, climate_view=brazil_climate()).servable(
-    title="Brazil — ENSO Macro Risk Desk")
+    title="Brazil, ENSO Macro Risk Desk")
