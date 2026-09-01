@@ -9,6 +9,7 @@ Run either way::
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -321,6 +322,76 @@ def test_methodology_doc_matches_code() -> None:
     # which links are allowed to carry a direction.
     for cls in ("CAUSAL", "MODERATE", "WEAK", "NONE"):
         assert cls in doc, f"verdict class {cls} undocumented"
+
+
+def _marked_block(text: str, tag: str) -> str:
+    """Return the text between ``<!-- tag:start -->`` and ``<!-- tag:end -->``."""
+    start, end = f"<!-- {tag}:start -->", f"<!-- {tag}:end -->"
+    assert start in text and end in text, f"missing {tag} markers"
+    return text.split(start, 1)[1].split(end, 1)[0]
+
+
+def _normalize_copy(text: str) -> str:
+    """Collapse whitespace and drop markdown link targets, keeping visible prose.
+
+    The same paragraph is hard-wrapped differently in each file, and the relative path to
+    METHODOLOGY.md necessarily differs between a doc inside ``docs/`` and one at the repo
+    root. Neither is drift. Comparing the words a reader actually sees is.
+    """
+    return " ".join(re.sub(r"\]\([^)]*\)", "]", text).split())
+
+
+def test_about_copy_is_single_sourced() -> None:
+    """The three published descriptions of this project may not disagree with each other.
+
+    They already did once: the README, the Space card and METHODOLOGY.md each carried
+    their own answer to "what is this", and the page count went stale in all three while
+    the Space card still described six causal links and eight pages. Prose that is copied
+    by hand rots by hand, so the copies are now generated from docs/ABOUT.md and this
+    fails the moment one of them is edited in place.
+    """
+    about = (_ROOT / "docs" / "ABOUT.md").read_text(encoding="utf-8")
+    canon = _normalize_copy(_marked_block(about, "about"))
+    oneline = _normalize_copy(_marked_block(about, "oneline"))
+    assert len(canon) > 400, "the canonical About block looks truncated"
+
+    for rel in ("README.md", "deploy/hf/README.md"):
+        text = (_ROOT / rel).read_text(encoding="utf-8")
+        copy = _normalize_copy(_marked_block(text, "about"))
+        assert copy == canon, (
+            f"{rel} has drifted from docs/ABOUT.md. Edit docs/ABOUT.md and paste the "
+            f"block back into the about:start/about:end markers."
+        )
+
+    layout = (_ROOT / "web" / "app" / "layout.tsx").read_text(encoding="utf-8")
+    assert oneline.strip('"') in _normalize_copy(layout), (
+        "web/app/layout.tsx meta description no longer matches the one-liner in "
+        "docs/ABOUT.md"
+    )
+
+
+def test_user_facing_copy_has_no_em_dashes() -> None:
+    """House style: user-facing copy uses no em dash, and no hyphen standing in for one.
+
+    An em dash is not a bug, but it is the tell of unedited machine prose, and the fix of
+    swapping in a spaced hyphen is worse than the problem. Recast with a comma, a colon or
+    a full stop. This covers the published prose files; en dashes in numeric ranges such
+    as 1950-2026 are correct and are not touched.
+    """
+    published = [
+        "README.md", "docs/ABOUT.md", "docs/METHODOLOGY.md",
+        "deploy/hf/README.md", "web/app/layout.tsx", "web/app/page.tsx",
+    ]
+    offenders = {}
+    for rel in published:
+        path = _ROOT / rel
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8")
+        hits = text.count("—") + text.count("&mdash;")
+        if hits:
+            offenders[rel] = hits
+    assert not offenders, f"em dashes in user-facing copy: {offenders}"
 
 
 def test_lstm_exog_channels_feed_input_only_and_reject_gaps() -> None:
