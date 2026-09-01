@@ -25,9 +25,13 @@ COLORS: dict[str, str] = {
     "la_nina": "#3a9af4",   # ocean-blue (cold)
     "neutral": "#8a94a6",   # grey
     "teal": "#00d4b4",      # highlight
+    "amber": "#f4b13a",     # caution / WATCH badges
     "text": "#e8edf5",      # primary text
     "muted": "#5b6577",     # subtle text / gridlines
 }
+# ``amber`` was a real palette member long before it was declared here: ten call sites
+# reach it as ``COLORS.get("amber", "#f4b13a")``. Those fallbacks still work and are left
+# alone; the point is that the palette no longer understates its own size.
 
 PHASE_COLORS: dict[str, str] = {
     "El Nino": COLORS["el_nino"],
@@ -39,9 +43,21 @@ FONT_FAMILY = "Inter, 'Segoe UI', system-ui, sans-serif"
 
 
 def plotly_dark_layout(**overrides) -> dict:
-    """Return a base Plotly layout dict matching the dashboard dark theme."""
+    """Return a base Plotly layout dict matching the dashboard dark theme.
+
+    Nested keys (``xaxis``, ``yaxis``, ``font`` and friends) are merged one level deep
+    rather than replaced. A caller asking for ``yaxis=dict(title="ONI")`` wants a title,
+    not a bare axis, but a plain ``dict.update`` swapped the whole themed axis out and
+    silently took the gridlines with it. Several pages were restating ``gridcolor`` by
+    hand to undo exactly that. The caller's own keys still win, so an override that
+    genuinely means to change a gridline colour still does.
+    """
     layout = dict(
-        paper_bgcolor=COLORS["bg"],
+        # Transparent rather than COLORS["bg"]: cards sit on ``surface`` (#141929) while
+        # this was painting ``bg`` (#0a0e1a), so every chart cut a darker rectangle out of
+        # its own card. Transparent inherits whatever it is dropped onto, which is the page
+        # background when a chart stands alone and the card colour when it does not.
+        paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor=COLORS["bg"],
         font=dict(family=FONT_FAMILY, color=COLORS["text"], size=13),
         margin=dict(l=60, r=30, t=50, b=40),
@@ -61,7 +77,12 @@ def plotly_dark_layout(**overrides) -> dict:
             font=dict(color=COLORS["text"], family=FONT_FAMILY),
         ),
     )
-    layout.update(overrides)
+    for key, value in overrides.items():
+        base = layout.get(key)
+        if isinstance(base, dict) and isinstance(value, dict):
+            layout[key] = {**base, **value}
+        else:
+            layout[key] = value
     return layout
 
 

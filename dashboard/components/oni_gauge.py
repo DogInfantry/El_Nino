@@ -56,7 +56,7 @@ def build_gauge(value: float, *, title: str = "Latest ONI (3-mo mean)") -> go.Fi
         )
     )
     fig.update_layout(
-        paper_bgcolor=COLORS["bg"],
+        paper_bgcolor="rgba(0,0,0,0)",   # inherit the card, do not repaint the page
         font={"family": FONT_FAMILY, "color": COLORS["text"]},
         height=280,
         margin=dict(l=30, r=30, t=50, b=10),

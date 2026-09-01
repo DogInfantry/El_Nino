@@ -122,7 +122,7 @@ def build_oni_timeseries(
     style_figure(
         fig,
         title=dict(
-            text=title or f"{index_label} — Niño-3.4 SST anomaly (1950–present)",
+            text=title or f"{index_label}, Niño-3.4 SST anomaly (1950–present)",
             font=dict(size=16),
         ),
         height=420,

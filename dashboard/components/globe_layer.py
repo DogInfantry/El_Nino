@@ -27,23 +27,23 @@ NINO34_BOX = dict(lat0=-5, lat1=5, lon0=-170, lon1=-120)
 
 # Canonical El Niño teleconnection tendencies (approximate bounding regions).
 TELECONNECTIONS: list[dict] = [
-    {"name": "Maritime Continent / Indonesia — drought", "impact": "dry",
+    {"name": "Maritime Continent / Indonesia, drought", "impact": "dry",
      "lat0": -10, "lat1": 7, "lon0": 95, "lon1": 140},
-    {"name": "E Australia — drought", "impact": "dry",
+    {"name": "E Australia, drought", "impact": "dry",
      "lat0": -38, "lat1": -15, "lon0": 140, "lon1": 154},
-    {"name": "Southern Africa — drought", "impact": "dry",
+    {"name": "Southern Africa, drought", "impact": "dry",
      "lat0": -30, "lat1": -10, "lon0": 20, "lon1": 40},
-    {"name": "Amazon / NE Brazil — drought", "impact": "dry",
+    {"name": "Amazon / NE Brazil, drought", "impact": "dry",
      "lat0": -10, "lat1": 5, "lon0": -70, "lon1": -45},
-    {"name": "India — weak monsoon", "impact": "dry",
+    {"name": "India, weak monsoon", "impact": "dry",
      "lat0": 8, "lat1": 28, "lon0": 70, "lon1": 88},
-    {"name": "Peru / Ecuador coast — flooding", "impact": "wet",
+    {"name": "Peru / Ecuador coast, flooding", "impact": "wet",
      "lat0": -12, "lat1": 2, "lon0": -82, "lon1": -72},
-    {"name": "S Brazil / Uruguay / N Argentina — wet", "impact": "wet",
+    {"name": "S Brazil / Uruguay / N Argentina, wet", "impact": "wet",
      "lat0": -35, "lat1": -20, "lon0": -62, "lon1": -48},
-    {"name": "Horn of Africa — wet (short rains)", "impact": "wet",
+    {"name": "Horn of Africa, wet (short rains)", "impact": "wet",
      "lat0": -3, "lat1": 12, "lon0": 38, "lon1": 51},
-    {"name": "US Gulf Coast / California — wet", "impact": "wet",
+    {"name": "US Gulf Coast / California, wet", "impact": "wet",
      "lat0": 28, "lat1": 38, "lon0": -122, "lon1": -82},
 ]
 
@@ -106,7 +106,8 @@ def build_sst_map(
         showcountries=True, countrycolor="rgba(138,148,166,0.18)",
     )
     fig.update_layout(
-        paper_bgcolor=COLORS["bg"], font=dict(family=FONT_FAMILY, color=COLORS["text"]),
+        paper_bgcolor="rgba(0,0,0,0)",  # inherit the card, do not repaint the page
+        font=dict(family=FONT_FAMILY, color=COLORS["text"]),
         margin=dict(l=0, r=0, t=10, b=0), height=520,
     )
     return fig
