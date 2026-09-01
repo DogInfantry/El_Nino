@@ -91,9 +91,16 @@ REGISTRY: tuple[Source, ...] = (
            "download, so it is run by hand — deliberately not in the monthly cron.",
            expected_lag_days=250),
     Source("IMD subdivision rainfall", "static",
-           "https://data.gov.in/", None, "monsoon_india.parquet",
-           "Fixed 1901–2017 dataset. All-India JJAS is an unweighted subdivision mean "
-           "(r=0.77 vs the official area-weighted AISMR)."),
+           "https://raw.githubusercontent.com/dcsavinod/"
+           "weather-and-rainfall-data-from-1901-to-2022/main/"
+           "Rainfall_State_Analysis_India_1901_2017.csv",
+           None, "monsoon_india.parquet",
+           "Fixed 1901–2017 dataset. It originates with IMD and is published on "
+           "data.gov.in, but what monsoon_fetcher.py actually reads is the third-party "
+           "GitHub CSV mirror named above. The registry cites the real fetch target so "
+           "the status page and /api/sources do not overstate provenance. All-India JJAS "
+           "here is an unweighted subdivision mean (r=0.77 vs the official area-weighted "
+           "AISMR), superseded by the gridded series."),
     Source("Ancillary climate indices", "feed",
            "https://psl.noaa.gov/data/correlation/", 31, "climate_indices.parquet",
            "SOI · Niño 1+2/3/4 · TNI · PDO · AMO · PNA · WP · DMI. Individual indices go "

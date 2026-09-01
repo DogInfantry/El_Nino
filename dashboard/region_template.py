@@ -114,7 +114,7 @@ class RegionConfig:
     history_rows: list[tuple[str, str, str, str, str]]  # (event, oni, chip_cls, outcome, note)
     causal_chain: list[tuple[str, str, str]]     # (label, value, color)
     footer: str
-    econ_takeaway: str = ("The price link is causal and lagged — position during the season, "
+    econ_takeaway: str = ("The price link is causal and lagged, position during the season, "
                           "ahead of the price response.")
 
 
@@ -254,6 +254,35 @@ def _apply_stance(cfg: RegionConfig) -> dict | None:
     return s
 
 
+_DIRECTIONAL_CLS = ("causal", "mod")   # mirrors positioning._DIRECTIONAL_CLS
+
+
+def _causal_badge(s: dict | None) -> str:
+    """The ONI→price verdict, read from the cache rather than asserted.
+
+    This was a hardcoded teal "ONI → impact: CAUSAL · one-way (Granger + CCM converges
+    forward)" rendered on every region page. Once the surrogate null landed it was wrong
+    on all five at once: Peru showed it directly beneath a line saying the link is capped
+    at WEAK, and Brazil showed it while being UNTESTED with r ≈ −0.07. A desk whose whole
+    argument is the misattribution guard cannot hand-type the verdict it is guarding.
+
+    It also conflated two different claims. ONI→*impact* (drought, monsoon) is the link
+    the region pages actually demonstrate; ONI→*price* is the one that keeps failing. The
+    badge now names the price verdict, because that is what the parenthetical was about.
+    """
+    box = "<div class='card' style='margin-top:9px;font-size:11px;color:#c2cadb'>"
+    if not s:
+        return (f"{box}<b style='color:{COLORS['muted']}'>ONI → price: UNVERIFIED</b> · "
+                "stance cache missing; run <code>data/process/positioning.py</code>.</div>")
+    verdict = str(s.get("verdict", "UNTESTED"))
+    if str(s.get("verdict_cls", "")).lower() in _DIRECTIONAL_CLS:
+        color, tail = COLORS["teal"], "one-way (Granger and CCM converge forward)."
+    else:
+        color, tail = AMBER, ("the climate link is the one this page demonstrates; the "
+                              "price channel does not beat its surrogate null.")
+    return f"{box}<b style='color:{color}'>ONI → price: {verdict}</b> · {tail}</div>"
+
+
 def _stance_line(s: dict) -> str:
     """The receipt: the numbers the badge was derived from, shown next to the badge."""
     r, impact = float(s["r_peak"]), float(s["impact"])
@@ -265,7 +294,7 @@ def _stance_line(s: dict) -> str:
                    "under-calling the event; conviction is haircut when that gap exceeds 1.0.")
     override = ""
     if str(s.get("override_reason") or ""):
-        override = (f"<br><span style='color:{AMBER}'>MANUAL OVERRIDE</span> — "
+        override = (f"<br><span style='color:{AMBER}'>MANUAL OVERRIDE</span>, "
                     f"{s['override_reason']}")
     return (
         f"<div class='dv-comp'><span class='ck'>Computed stance</span> "
@@ -340,7 +369,7 @@ def _ccm_chart(ccm, name: str) -> go.Figure:
         fig.add_trace(go.Scatter(x=g["lib_size"], y=g["rho"], mode="lines+markers",
                                  line=dict(color=color, width=2.4), name=label))
     style_figure(fig, height=300, margin=dict(l=50, r=10, t=40, b=40),
-                 title=dict(text=f"Convergent Cross Mapping — ONI → {name}", font=dict(size=14)),
+                 title=dict(text=f"Convergent Cross Mapping, ONI → {name}", font=dict(size=14)),
                  yaxis=dict(title="cross-map skill ρ"), xaxis=dict(title="library size"),
                  legend=dict(orientation="h", y=-0.25))
     return fig
@@ -360,12 +389,12 @@ def _econ_tab(cfg: RegionConfig) -> pn.viewable.Viewable:
         chart = pn.pane.Plotly(_ccm_chart(res["ccm"], short), config={"displayModeBar": False},
                                sizing_mode="stretch_width")
         verdict = pn.pane.HTML(
-            f"<div class='card'><div class='lab'>Causation — ONI → {short} "
+            f"<div class='card'><div class='lab'>Causation, ONI → {short} "
             "<span class='real'>LIVE Granger+CCM</span></div>"
             "<div style='font-size:12px;line-height:1.55;color:#c2cadb'><b style='color:#e8edf5'>How to "
             "read it:</b> a forward curve (teal) that <b style='color:#e8edf5'>rises and converges</b> "
             "while the reverse (grey) stays flat is the signature of one-way ONI→price forcing. A flat "
-            "forward curve means the apparent link is likely <b style='color:#e8edf5'>spurious</b> — the "
+            "forward curve means the apparent link is likely <b style='color:#e8edf5'>spurious</b>: the "
             "misattribution guard. Computed live on detrended series.</div></div>")
         body = pn.Row(pn.Column(chart, css_classes=["card"]), verdict)
     except Exception as exc:  # noqa: BLE001
@@ -397,15 +426,13 @@ def build_region(cfg: RegionConfig, climate_view: pn.viewable.Viewable,
         pn.Column(pn.pane.Plotly(_region_map(cfg), config={"displayModeBar": False},
                                  sizing_mode="stretch_width"), css_classes=["card"]),
         pn.Column(_kpi_rail(cfg),
-                  pn.pane.HTML("<div class='card' style='margin-top:9px;font-size:11px;color:#c2cadb'>"
-                               "<b style='color:#00d4b4'>ONI → impact: CAUSAL</b> · one-way "
-                               "(Granger + CCM converges forward).</div>"),
+                  pn.pane.HTML(_causal_badge(stance)),
                   width=360),
         sizing_mode="stretch_width")
     tabs = pn.Tabs(
         ("Climate", climate_view),
         ("Agriculture", agri_view or pn.pane.HTML(
-            "<div class='card' style='color:#8a94a6'>Agriculture composite — pending crop ingestion "
+            "<div class='card' style='color:#8a94a6'>Agriculture composite, pending crop ingestion "
             "for this region.</div>")),
         ("Economics", _econ_tab(cfg)),
         ("History", _history_tab(cfg)),

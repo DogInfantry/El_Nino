@@ -23,7 +23,7 @@ from granger_ccm import analyze
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CACHE_DIR = PROJECT_ROOT / "data" / "cache"
 
-# (Pink-Sheet commodity, short label) — six links the desk vets on the front page.
+# (Pink-Sheet commodity, short label): the links the desk vets on the front page.
 LINKS = [
     ("Palm oil", "Palm oil"), ("Coffee, Robusta", "Robusta"), ("Sugar, world", "Sugar"),
     ("Soybeans", "Soybeans"), ("Cocoa", "Cocoa"), ("Wheat, US HRW", "Wheat"),

@@ -1,5 +1,5 @@
-"""Single entry point for the ENSO Macro Risk Desk — serves the landing at the
-site ROOT ("/") with the other eight pages at their own routes.
+"""Single entry point for the ENSO Macro Risk Desk: serves the landing at the
+site ROOT ("/") with the other thirteen pages at their own routes.
 
 `panel serve dashboard/pages/*.py` puts every app at /<stem> and shows a Bokeh
 directory listing at "/". This launcher instead maps the landing to "/" so the

@@ -100,7 +100,7 @@ def build_ccm_chart(ccm: pd.DataFrame, name: str) -> go.Figure:
                                  line=dict(color=color, width=2.4), name=label,
                                  hovertemplate=label + "<br>L=%{x}: rho=%{y:.3f}<extra></extra>"))
     style_figure(fig, height=320, margin=dict(l=60, r=30, t=46, b=70),
-        title=dict(text="Convergent Cross Mapping — skill vs library size", font=dict(size=15)),
+        title=dict(text="Convergent Cross Mapping, skill vs library size", font=dict(size=15)),
         yaxis=dict(title="Cross-map skill ρ", gridcolor="rgba(138,148,166,0.12)"),
         xaxis=dict(title="Library size (months)"),
         legend=dict(orientation="h", yanchor="top", y=-0.2, x=0))
@@ -122,7 +122,7 @@ def _verdict(g_fwd, ccm, name, alpha) -> str:
         head, color = "Partial / mixed evidence for ONI → " + name, COLORS["el_nino"]
         body = (f"Granger significant at {sig}/24 lags; CCM convergence "
                 f"{'present' if converges else 'weak/absent'}. Linear and nonlinear "
-                "tests disagree — treat as suggestive, not conclusive.")
+                "tests disagree: treat as suggestive, not conclusive.")
     else:
         head, color = "No robust causal signal", COLORS["neutral"]
         body = (f"Granger significant at only {sig}/24 lags and CCM does not "
@@ -166,13 +166,16 @@ def build_app() -> pn.viewable.Viewable:
     note = pn.pane.HTML(
         "<div class='enso-note'><b>Reading this honestly.</b> Series are linearly "
         "detrended (not differenced) to preserve the low-frequency ENSO signal; "
-        "they remain autocorrelated, so <b>Granger over-detects</b> — note how the "
+        "they remain autocorrelated, so <b>Granger over-detects</b>: note how the "
         "reverse direction (commodity → ONI) is often 'significant' too, which is "
         "physically implausible. <b>CCM is more discriminating</b>: genuine "
         "causation shows cross-map skill that <i>rises and converges</i> with "
-        "library size in one direction only. Neither test includes "
-        "phase-randomized <b>surrogate</b> significance yet (a planned addition), "
-        "so treat verdicts as exploratory. Correlation ≠ causation; teleconnections "
+        "library size in one direction only. This live explorer does <b>not</b> run "
+        "phase-randomized <b>surrogate</b> significance, because 500 extra cross-map "
+        "passes per commodity is a precompute cost rather than a page-load cost, so "
+        "read these verdicts as exploratory. The landing strip carries the gated ones, "
+        "and under that null no ONI→price link currently survives. "
+        "Correlation ≠ causation; teleconnections "
         "are probabilistic and modulated by IOD/MJO.</div>")
 
     return pn.Column(
