@@ -67,6 +67,9 @@ DEEP_DIVES: dict[str, tuple[str, str]] = {
     "IDN": ("08_seasia", "SE Asia deep-dive"),
     "MYS": ("08_seasia", "SE Asia deep-dive"),
     "THA": ("08_seasia", "SE Asia deep-dive"),
+    "BRA": ("11_brazil", "Brazil deep-dive"),
+    "AUS": ("12_australia", "Australia deep-dive"),
+    "PER": ("13_peru", "Peru deep-dive"),
 }
 
 RAW_CSS = f"""
@@ -322,15 +325,15 @@ def _causation_lead(verdicts: pd.DataFrame) -> str:
     detail = ""
     if len(tested):
         top = verdicts.loc[verdicts["ccm_rho"].idxmax()]
-        detail = (f"The strongest raw cross-map skill on the board — {top['commodity']} "
-                  f"at ρ {top['ccm_rho']:.2f} — sits at p={top['ccm_p']:.2f} against a "
+        detail = (f"The strongest raw cross-map skill on the board, {top['commodity']} "
+                  f"at ρ {top['ccm_rho']:.2f}, sits at p={top['ccm_p']:.2f} against a "
                   f"phase-randomized null that averages ρ {top['ccm_null']:.2f} on its "
                   f"own. Cross-map skill runs high between <i>any</i> two smooth seasonal "
                   f"series, so a ρ quoted without its null is not evidence. ")
 
     return ("<p class='czlead'>" + head + detail +
-            "The clean ENSO signal lives on the <b>climate &amp; production</b> side — the "
-            "monsoon and Maritime-Continent drought we prove in the region deep-dives — "
+            "The clean ENSO signal lives on the <b>climate &amp; production</b> side, the "
+            "monsoon and Maritime-Continent drought we prove in the region deep-dives, "
             "not in noisy monthly prices.</p>")
 
 
@@ -349,7 +352,15 @@ def _ticker(latest_oni: float, exp: pd.DataFrame, fc: pd.DataFrame) -> str:
     for _, r in top.iterrows():
         items.append(f"{r['name']} {r['commodity'].split(',')[0]} "
                      f"<b class='d'>exp {r['index']:.0f}</b>")
-    items.append("Causal guard: max ONI→price CCM ρ <b class='d'>0.32</b> — most price links don't survive")
+    try:
+        vd = pd.read_parquet(CACHE_DIR / "landing_verdicts.parquet")
+        n_pass = int(vd["cls"].isin(("causal", "mod")).sum())
+        items.append(f"Causal guard: <b class='d'>{n_pass} of {len(vd)}</b> ONI→price links "
+                     f"beat their surrogate null")
+    except Exception:
+        # The strip below already degrades without this cache; the ticker follows suit
+        # rather than taking the page down over a decoration.
+        pass
     seg = "<span class='sep'>•</span>".join(items)
     return f"<div class='tick'><span class='run'>{seg}</span></div>"
 
@@ -381,7 +392,9 @@ def build_app() -> pn.viewable.Viewable:
            ("MAP", "/02_global_map", False), ("FCST", "/03_forecast", False),
            ("IMPACT", "/04_sector_impact", False), ("CAUSAL", "/05_causation", False),
            ("HIST", "/06_historical", False), ("INDIA", "/07_india", False),
-           ("SEASIA", "/08_seasia", False)]
+           ("SEASIA", "/08_seasia", False), ("BRAZIL", "/11_brazil", False),
+           ("AUS", "/12_australia", False), ("PERU", "/13_peru", False),
+           ("METHOD", "/09_methodology", False), ("STATUS", "/10_status", False)]
     chips = "".join(
         f"<a class='fn{' on' if on else ''}' href='{href}'>{label}</a>"
         for label, href, on in nav)
@@ -406,9 +419,9 @@ def build_app() -> pn.viewable.Viewable:
         pn.pane.HTML(
             (f"<div class='cap'>NOWCAST <b>{wk.anom:+.1f}</b> wk ctr. "
              f"{wk.week_date:%d %b} · 4-wk <b>{wk.anom_4wk:+.2f}</b>"
-             "<br><span style='opacity:.62'>weekly Niño-3.4 SST anom — "
+             "<br><span style='opacity:.62'>weekly Niño-3.4 SST anom, "
              "not ONI-comparable</span></div>")
-            if wk else "<div class='cap'>NOWCAST — <span style='opacity:.62'>"
+            if wk else "<div class='cap'>NOWCAST, <span style='opacity:.62'>"
                        "weekly feed unavailable</span></div>", margin=0),
         pn.pane.HTML("<div class='wid' style='margin-top:14px'><div class='h'>"
                      "ONI trajectory · 24 mo</div></div>", margin=0),
@@ -424,7 +437,7 @@ def build_app() -> pn.viewable.Viewable:
         pn.pane.HTML("<div class='h' style='padding:8px 8px 0'>ENSO "
                      f"<span style='color:{COLORS['teal']}'>EXPOSURE INDEX</span> · by country "
                      "<span style='color:#5b6577;font-weight:400;text-transform:none;"
-                     "letter-spacing:0'>— coral = dry-impact · blue = wet-impact · "
+                     "letter-spacing:0'>· coral = dry-impact · blue = wet-impact · "
                      "hover for detail; use the leaderboard → or nav bar to drill in</span></div>",
                      margin=0),
         pn.pane.Plotly(build_exposure_map(exp), config=_PLOTLY_CFG, margin=0),
@@ -462,7 +475,7 @@ def build_app() -> pn.viewable.Viewable:
         "(50% computed peak lagged ONI–commodity correlation + 50% curated structural exposure) "
         "ranks where an ENSO swing reprices commodity &amp; sector risk. Click <b>India</b> or "
         "<b>SE Asia</b> in the leaderboard for the live deep-dive. The causal strip below is the "
-        "honesty layer — it shows which ONI→price links actually survive testing (few do). "
+        "honesty layer, it shows which ONI→price links actually survive testing (few do). "
         "ONI/forecast are live NOAA CPC; the index blends computed correlations with curated weights "
         "and is a research construct, not an official product.</div>", margin=0)
 
@@ -470,7 +483,7 @@ def build_app() -> pn.viewable.Viewable:
         pn.pane.HTML("<h2 style='font-size:22px;margin:0 0 3px'>ENSO Macro Risk Desk</h2>"
                      "<p style='color:#7e8aa3;font-size:13px;margin:0 0 14px;line-height:1.5'>"
                      "When the ENSO cycle shifts, what commodity &amp; sector exposure do you "
-                     "reposition — and which links are <b style='color:#e8edf5'>causally real "
+                     "reposition, and which links are <b style='color:#e8edf5'>causally real "
                      "vs. spurious</b>?</p>", margin=0),
         pn.Column(cmd, ticker, main, strip, css_classes=["rd"], margin=0),
         disclaimer,
