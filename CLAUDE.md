@@ -30,6 +30,16 @@ flagged data caveats, clear next-step guidance.
 message. This overrides the default harness behaviour. Verify after committing:
 `git log -1 --format='%B' | grep -i claude` must find nothing.
 
+**COPY STYLE (hard rule):** no em dashes in user-facing copy, and **never** a hyphen
+standing in for one, which is worse than the dash. Recast with a comma, a colon or a
+full stop. Keep hyphens that do real work (area-weighted, walk-forward). En dashes in
+numeric ranges (1950–2026) are correct and stay. Enforced by
+`test_user_facing_copy_has_no_em_dashes` over the published prose files; browser-facing
+dashboard strings were cleared in the same pass. The project description is
+single-sourced in `docs/ABOUT.md` and gated by `test_about_copy_is_single_sourced`:
+**edit that file, never the copies** in `README.md`, `deploy/hf/README.md` or
+`web/app/layout.tsx`.
+
 **Tech stack:** Python 3.12 (NOT 3.14) · Panel 1.9.3 · Plotly 6.x · Altair 6.x ·
 statsmodels · PyTorch 2.x · xarray/netCDF4 · imdlib · pandas/numpy/scipy ·
 kaleido/vl-convert (static export). No Streamlit, no pydeck, no pyEDM.
@@ -138,8 +148,10 @@ caches only.
 | File | Role |
 |------|------|
 | `docs/METHODOLOGY.md` | **NEW.** Published weights, thresholds, limits, ISRO decision. Rendered by page 09, enforced by a test |
-| `tests/test_core.py` | **17 tests**, no network |
-| `app.py` | Entry point; `_ROUTE` maps 11 pages |
+| `docs/ABOUT.md` | **NEW.** Canonical project description. README + HF card embed it between `about:start`/`about:end`; `web/app/layout.tsx` carries the one-liner. Gated by a test |
+| `docs/RESOURCES.md` | **NEW.** Evaluated tools and data APIs with verdicts, secret-handling rules, known duplications, house style |
+| `tests/test_core.py` | **25 tests**, no network |
+| `app.py` | Entry point; `_ROUTE` maps 14 pages; mounts `dashboard/api.py` via `extra_patterns` |
 | `scripts/refresh_data.py` | Chains ingest→process in order; `DATE_CACHES` regression gate |
 | `Dockerfile` · `requirements-space.txt` | HF Space (serve-only deps) |
 | `requirements.txt` | Full deps incl. `imdlib==0.1.21` (offline only) |
@@ -150,7 +162,19 @@ caches only.
 ## Current State
 
 ### Done and verified ✅
-- **All 11 pages build**; 17 tests pass; deploy live and healthy.
+- **All 14 pages build**; 25 tests pass; deploy live and healthy.
+- **Phase 2b — LSTM exogenous channels:** shipped (`a00c56c`). The extra channels
+  move where skill sits rather than rescuing the model, and page 03 says so.
+- **Phase 4 — JSON API:** shipped (`c42412d`). Eight endpoints under `/api`,
+  mounted from `app.py` via `extra_patterns`. **No `mcp_server.py` exists**; that
+  half was never built.
+- **Surrogate significance:** shipped (`7ed5cc3`). All seven ONI→price links now
+  read `WEAK · confounded`, so the causal gate caps **every** region at WATCH.
+- **Three more regions** (`d8cddee`) and **EM-DAT bubbles** (`1ba1b73`).
+- **Copy layer:** `docs/ABOUT.md` single-sources the project description across
+  README, HF card and web meta, gated by `test_about_copy_is_single_sourced`.
+  Em dashes removed from all published prose and every browser-facing dashboard
+  string, gated by `test_user_facing_copy_has_no_em_dashes`.
 - **Phase 1 — credibility layer:** computed positioning stances, source freshness
   registry, published methodology + doc-vs-code test.
 - **Phase 2a/2c — signal layer:** 10 ancillary climate indices; analog engine +
@@ -163,8 +187,12 @@ caches only.
 ### Key analytical results as of 2026-08-07
 - Regime: **WEAK EL NIÑO · 2026 · STRENGTHENING** (ONI +0.98 AMJ; weekly Niño-3.4
   +2.15 4-wk; SOI −4.00 → atmosphere coupled).
-- **Stances flipped vs the old hand-typed ones:** India CONSTRUCTIVE→**WATCH**,
-  SE Asia WATCH→**CAUTIOUS**. `r_peak` is negative for 10 of 11 registry rows.
+- **Every region reads WATCH, conviction 1.** Once the surrogate null landed, all
+  seven links became `WEAK · confounded`, and the causal gate caps a weak link at
+  WATCH regardless of magnitude. This is the gate working, not a placeholder.
+  `r_peak` is negative for 11 of 12 registry rows (Peru is the only positive).
+  **Do not quote a current stance in prose**; it rots on the monthly cron. The
+  README used to say "India WATCH, SE Asia CAUTIOUS" and was wrong within a month.
 - **Conviction haircut is ACTIVE** (observed−forecast = +1.01 °C > 1.0 tolerance).
 - **Analogs are bimodal:** May/Jun 1997 and May 2023 → +2.0…+2.4 at +6mo;
   Sep/Oct 2006 → −0.1/−0.3. The +6mo mean of +1.27 describes none of them.
@@ -173,11 +201,21 @@ caches only.
   changed the conclusion.
 
 ### Not done ❌ / deliberately deferred
-- **Phase 2b — LSTM exogenous channels.** Not started. Expensive (torch retrain +
-  ensemble re-run because of the vintage guard) and may still lose to SARIMA.
-- **Phase 4 — JSON API + MCP server.** Not started. `pn.serve(..., extra_patterns=)`
-  is confirmed supported; plan is `dashboard/api.py` + one line in `app.py`.
-- **README.md does not link `docs/METHODOLOGY.md`.**
+- **`mcp_server.py` never built.** The API half of Phase 4 shipped; the MCP half
+  did not. Do not describe it as existing.
+- **CSS consolidation.** Ten f-string `raw_css` blocks with conflicting definitions
+  (`.enso-card` has three paddings; `.chip` means two things). Needs a session
+  where visual QA is the whole job, since the only check is looking at it.
+- **`emdat_disasters.parquet` is not in `data/cache/`.** The bubble overlay is
+  code-complete but dark; page 02 degrades cleanly to no bubbles. Manual export
+  required, by the data owner's terms.
+- **Brazil is structurally incapable of a view.** `positioning.VERDICT_KEY` has no
+  `Coffee, Arabica` entry, so page 11 is permanently UNTESTED and gated to WATCH.
+  The fail-safe is working as designed; whether to add Arabica to the verdict pass
+  is an open decision.
+- **`web/` advertises 4 of 14 pages** and has no Open Graph or Twitter card tags.
+- **New data sources evaluated, not wired.** data.gov.in Agmarknet and FRED. See
+  `docs/RESOURCES.md` for endpoints, series IDs and why neither was taken.
 - **IITM AISMR dropped** — TLS chain failure, see Gotchas.
 - **BoM RMM/MJO dropped** — the Bureau blocks automated access, see Gotchas.
 
@@ -185,30 +223,27 @@ caches only.
 
 ## Active Task
 
-**NOTHING IN FLIGHT. Working tree clean.**
+**NOTHING IN FLIGHT. Working tree clean, synced with `origin/master`.**
 
-**3 commits are ahead of `origin/master` and NOT pushed:** `4d37cdb`, `ce0a372`,
-`48be828` (all of Phase 3). Pushing triggers `deploy-hf.yml` → the Space rebuilds
-itself. Phases 1 and 2 are already pushed and live (`3bbdf19`).
-
-Everything else in the plan is optional and unstarted. The approved plan is at
-`C:\Users\Anklesh\.claude\plans\i-came-across-https-github-com-koala73-w-shimmying-cocke.md`.
+The copy and credibility pass is committed: `docs/ABOUT.md` single-sourcing,
+stale-claim corrections, em dash removal, the nav fix, and three `theme.py` fixes.
 
 ---
 
 ## Next Steps (ordered)
 
-1. **Push Phase 3** — `git push origin master`. Then verify the Space (see Gotchas
-   for why HTTP 200 is not proof).
-2. **README.md** — link `docs/METHODOLOGY.md`, mention pages 09/10 and the analog panel.
-3. **Phase 2b — LSTM exogenous channels.** Feed `climate_indices.model_features()`
-   as extra input channels; add a `variant` column to `skill_all.parquet`; chart
-   univariate vs multivariate on page 03. **If SARIMA still wins, say so.**
-4. **Phase 4 — machine-readable surface.** `dashboard/api.py` Tornado handlers
-   (`/api/state`, `/api/positioning`, `/api/exposure`, `/api/verdicts`,
-   `/api/analogs`, `/api/sources`) + `mcp_server.py` (stdio, offline only).
-5. **Optional:** more regions (Brazil/coffee, Australia/wheat, Peru/floods) as
-   ~60-line clones of `08_seasia.py`; EM-DAT bubbles; CCM surrogate significance.
+1. **CSS consolidation.** Collapse the ten `raw_css` blocks into one shared
+   stylesheet. Budget a whole session; the only verification is visual.
+2. **`web/` front door.** It shows 4 of 14 pages, predates the "no link survives"
+   result, and ships no Open Graph tags. First thing a recruiter sees.
+3. **Decide the Brazil question.** Either add `Coffee, Arabica` to
+   `landing_causation.LINKS` so page 11 can carry a verdict, or state on the page
+   why it cannot. Right now it silently reads WATCH forever.
+4. **Optional data work.** data.gov.in Agmarknet mandi prices, or a FRED overlay
+   past the 2024-12 Pink Sheet cutoff. Both are parallel caches, never splices.
+   `docs/RESOURCES.md` has the endpoints and the reasoning.
+5. **Optional:** `mcp_server.py` (stdio, offline only), Perspective pivot grid for
+   the exposure table (see `docs/RESOURCES.md` on how to verify it headless).
 
 ---
 
