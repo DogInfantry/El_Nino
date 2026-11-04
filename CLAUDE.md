@@ -284,6 +284,13 @@ this. **The first cut of the freshness module reproduced the 2026-07-30 false al
 inside the tool built to prevent it** — it called a current ONI STALE at 98 days.
 Always measure lateness net of structural label lag.
 
+### `is_fresh()` trusts mtime, and CI resets every mtime
+`_common.is_fresh` decides cache freshness from file mtime. A CI checkout stamps every
+committed parquet with mtime = now, so any fetcher run without `--no-cache` silently
+re-serves the committed file. This froze the ONI at AMJ 2026 through the Sep and Oct
+2026 crons while both went green. **Every fetcher in `refresh_data.py` needs
+`--no-cache`.** The refresh now also fails if `source_registry` calls the ONI STALE.
+
 ### Frozen upstreams that still return HTTP 200
 - CPC `wksst8110.for` — frozen at 2021-01-27. Only `wksst9120.for` is live.
 - PSL `amon.us.data` (AMO) — frozen at 2023-01. `climate_indices.coverage()` flags

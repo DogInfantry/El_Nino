@@ -32,14 +32,17 @@ if not PY.exists():  # no .venv at all (CI runner) — reuse this interpreter
 
 # (label, module path) in dependency order.
 STEPS = [
-    ("ONI (CPC ascii)",          "data/ingest/oni_fetcher.py"),
+    # --no-cache: is_fresh() trusts file mtime, and a CI checkout stamps every
+    # committed cache with mtime = now. Without it the ONI was re-served from the
+    # committed parquet on every run after Aug 2026 and never moved past AMJ.
+    ("ONI (CPC ascii)",          "data/ingest/oni_fetcher.py --no-cache"),
     # Cheap (one small text file) and the freshest number on the desk. The pages
     # read it live; this only refreshes the offline-fallback snapshot.
     ("Weekly Nino-3.4 snapshot", "data/ingest/weekly_nino34.py"),
-    # --no-cache: their 30-day caches can straddle a month boundary and miss
-    # the newly published ERSST month (raw netCDF is also cleared below).
     # Cheap text files. Independent of the ONI, so order vs ERSST does not matter.
     ("Ancillary climate indices", "data/ingest/climate_indices.py"),
+    # --no-cache: their 30-day caches can straddle a month boundary and miss
+    # the newly published ERSST month (raw netCDF is also cleared below).
     ("ERSSTv5 grids (~150MB download)", "data/ingest/ersst_fetcher.py --no-cache"),
     ("RONI",                     "data/process/roni_calculator.py --no-cache"),
     ("ENSO phases",              "data/process/enso_phase_labeler.py"),
@@ -130,6 +133,18 @@ def main() -> int:
         for r in regressions:
             print(f"   {r}")
         print("Do NOT commit. Investigate upstream before pushing.")
+        return 1
+
+    # Staleness gate. The regression gate only catches a date going BACKWARDS; a
+    # cache that silently stops moving passed it for two months. Measured net of
+    # the ONI's centre-month label lag, so a current value is not a false alarm.
+    # ponytail: ONI only. PDO and the Pink Sheet sit behind by design.
+    sys.path.insert(0, str(ROOT))
+    from data.ingest.source_registry import status_table
+    oni = status_table().set_index("cache").loc["oni.parquet"]
+    if oni["status"] == "STALE":
+        print(f"\n!! ONI is STALE after refresh (latest {oni['latest']:%Y-%m}, "
+              f"{oni['behind_days']:.0f} d behind net of label lag). Do NOT commit.")
         return 1
 
     print("\nNext: git diff data/cache  ->  commit  ->  push (HF Space redeploys itself).")
