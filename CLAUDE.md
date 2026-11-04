@@ -184,9 +184,13 @@ caches only.
 - **Deployed:** https://huggingface.co/spaces/DogInfantry/enso-macro-risk-desk
   (verified `RUNNING`, all routes 200, `docs/` present on the Space).
 
-### Key analytical results as of 2026-08-07
-- Regime: **WEAK EL NIÑO · 2026 · STRENGTHENING** (ONI +0.98 AMJ; weekly Niño-3.4
-  +2.15 4-wk; SOI −4.00 → atmosphere coupled).
+### Key analytical results as of 2026-08-07 (regime/haircut updated 2026-11-04)
+- Regime: **VERY STRONG EL NIÑO · 2026 · STRENGTHENING** (ONI +2.46 ASO; weekly
+  Niño-3.4 +3.33 4-wk). Sep/Oct 2026 caches were silently stuck at AMJ +0.98, see
+  the `is_fresh()` gotcha. Conviction haircut now **inactive** (+0.91 < 1.0).
+- PSL's SOI/PNA/WP mirror trails CPC by ~2 months, so analogs query 2 months behind
+  the ONI. CPC's own SOI (`cpc.ncep.noaa.gov/data/indices/soi`) is current, with
+  identical values.
 - **Every region reads WATCH, conviction 1.** Once the surrogate null landed, all
   seven links became `WEAK · confounded`, and the causal gate caps a weak link at
   WATCH regardless of magnitude. This is the gate working, not a placeholder.
