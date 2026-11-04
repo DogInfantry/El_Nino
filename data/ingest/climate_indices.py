@@ -14,6 +14,9 @@ Sources (free, no auth)
 -----------------------
 NOAA PSL ``/data/correlation/*.data`` — year rows of 12 monthly values.
 NOAA PSL ``dmi.had.long.csv``        — long HadISST Dipole Mode Index, 1870 onward.
+NOAA CPC ``/data/indices/soi``       — the SOI at its origin. PSL's ``soi.data`` mirrors it
+                                       exactly (907 months, zero difference, checked
+                                       2026-11) but was three months behind.
 
 .. note::
    **The Bureau of Meteorology is deliberately NOT used.** Requesting
@@ -36,7 +39,7 @@ Output
     date   (datetime64) -- month start, e.g. 2026-07-01
     index  (str)        -- SOI, NINO12, NINO3, NINO34, NINO4, TNI, PDO, AMO, PNA, WP, DMI
     value  (float)      -- the index value; sentinels dropped, never zero-filled
-    source (str)        -- psl_correlation | psl_dmi_had_long
+    source (str)        -- psl_correlation | psl_dmi_had_long | cpc_soi
 """
 
 from __future__ import annotations
@@ -53,11 +56,11 @@ logger = logging.getLogger(__name__)
 CACHE_NAME = "climate_indices.parquet"
 PSL_BASE = "https://psl.noaa.gov/data/correlation/"
 DMI_URL = "https://www.psl.noaa.gov/data/timeseries/month/data/dmi.had.long.csv"
+SOI_URL = "https://www.cpc.ncep.noaa.gov/data/indices/soi"
 
 # index name -> PSL filename. The Niño regions come from the same ERSSTv5 the ONI does,
 # so they stay consistent with the desk's primary series rather than a competing product.
 PSL_INDICES: dict[str, str] = {
-    "SOI":    "soi.data",           # atmospheric half of ENSO (Tahiti - Darwin)
     "NINO12": "nina1.anom.data",    # 0-10S, 90W-80W   — coastal / far-eastern Pacific
     "NINO3":  "nina3.anom.data",    # 5N-5S, 150W-90W  — eastern Pacific
     "NINO34": "nina34.anom.data",   # 5N-5S, 170W-120W — the ONI region itself
@@ -144,6 +147,31 @@ def parse_dmi_csv(text: str) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=["date", "value"]).sort_values("date")
 
 
+def parse_cpc_soi(text: str) -> pd.DataFrame:
+    """Parse CPC's SOI file, keeping the ANOMALY block that PSL's ``soi.data`` mirrors.
+
+    Two traps, both of which parse without error if ignored:
+
+    * The file holds two blocks with identical layout, ANOMALY then STANDARDIZED, so a
+      plain scan yields every month twice with different values. Stop at the second header.
+    * Columns are fixed width and touch once a value is long (``-1.7-999.9-999.9``), so
+      ``str.split`` misreads them. Slice by position instead.
+    """
+    rows = []
+    for line in text.splitlines():
+        if line.startswith("YEAR") and rows:      # second header: STANDARDIZED starts here
+            break
+        if not line[:4].isdigit():
+            continue
+        for month in range(12):
+            field = line[4 + month * 6:10 + month * 6].strip()
+            if field and float(field) > -999:     # -999.9 pads the rest of the year
+                rows.append((pd.Timestamp(int(line[:4]), month + 1, 1), float(field)))
+    if not rows:
+        raise ValueError("No CPC SOI rows parsed — upstream format may have changed.")
+    return pd.DataFrame(rows, columns=["date", "value"]).sort_values("date")
+
+
 def fetch_all(timeout: float = 45.0) -> pd.DataFrame:
     """Download every index into one tidy frame. Raises only if nothing could be fetched.
 
@@ -171,6 +199,15 @@ def fetch_all(timeout: float = 45.0) -> pd.DataFrame:
         frames.append(dmi)
     except Exception as exc:  # noqa: BLE001
         logger.warning("Skipping DMI: %s", exc)
+
+    try:                     # atmospheric half of ENSO (Tahiti - Darwin)
+        resp = session.get(SOI_URL, timeout=timeout)
+        resp.raise_for_status()
+        soi = parse_cpc_soi(resp.text)
+        soi["index"], soi["source"] = "SOI", "cpc_soi"
+        frames.append(soi)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Skipping SOI: %s", exc)
 
     if not frames:
         raise RuntimeError("No climate indices could be fetched.")

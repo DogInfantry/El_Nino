@@ -103,8 +103,8 @@ REGISTRY: tuple[Source, ...] = (
            "AISMR), superseded by the gridded series."),
     Source("Ancillary climate indices", "feed",
            "https://psl.noaa.gov/data/correlation/", 31, "climate_indices.parquet",
-           "SOI · Niño 1+2/3/4 · TNI · PDO · AMO · PNA · WP · DMI. Individual indices go "
-           "frozen upstream while still serving HTTP 200 (AMO stopped at 2023-01); "
+           "SOI (from NOAA CPC) · Niño 1+2/3/4 · TNI · PDO · AMO · PNA · WP · DMI. "
+           "Individual indices go frozen upstream while still serving HTTP 200 (AMO stopped at 2023-01); "
            "climate_indices.model_features() drops those before any model sees them.",
            expected_lag_days=31),
     Source("RONI (in-repo)", "computed",

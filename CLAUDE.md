@@ -60,7 +60,7 @@ panel serve dashboard/pages/01_enso_monitor.py --show
 NOAA CPC ASCII    ──► oni_fetcher.py       ──► oni.parquet
 NOAA CPC weekly   ──► weekly_nino34.py     ──► weekly_nino34.parquet (+ live read)
 NOAA CPC PDF      ──► advisory_fetcher.py  ──► (live at page load, never cached)
-NOAA PSL indices  ──► climate_indices.py   ──► climate_indices.parquet
+PSL indices + CPC SOI ──► climate_indices.py ──► climate_indices.parquet
 World Bank XLSX   ──► pink_sheet.py        ──► commodities.parquet
 ERSSTv5 netCDF    ──► ersst_fetcher.py     ──► sst_anomaly_grids.parquet
 IMD 0.25° grids   ──► imd_gridded.py       ──► monsoon_india_grid.parquet  (MANUAL, 3 GB)
@@ -127,7 +127,7 @@ caches only.
 | `data/ingest/pink_sheet.py` | World Bank Pink Sheet → `commodities.parquet` |
 | `data/ingest/weekly_nino34.py` | CPC **weekly** Niño-3.4; live read at page load, parquet fallback |
 | `data/ingest/monsoon_fetcher.py` | IMD 36-subdivision monthly (1901–2017). Superseded for all-India; kept for provenance |
-| `data/ingest/climate_indices.py` | **NEW.** NOAA PSL SOI / Niño1+2,3,4 / TNI / PDO / AMO / PNA / WP + long DMI. `coverage()` flags frozen upstreams; **`model_features()` drops them before any model** |
+| `data/ingest/climate_indices.py` | **NEW.** CPC SOI + NOAA PSL Niño1+2,3,4 / TNI / PDO / AMO / PNA / WP + long DMI. `coverage()` flags frozen upstreams; **`model_features()` drops them before any model** |
 | `data/ingest/imd_gridded.py` | **NEW.** IMD 0.25° daily grids 1901–2024 → cos(lat) area-weighted JJAS. **MANUAL, ~3 GB.** `--offline` rebuilds from disk |
 | `data/ingest/source_registry.py` | **NEW.** One `Source` row per feed; `status_table()` returns FRESH/AGING/STALE/LIVE/SNAPSHOT/STATIC/MISSING |
 
@@ -150,7 +150,7 @@ caches only.
 | `docs/METHODOLOGY.md` | **NEW.** Published weights, thresholds, limits, ISRO decision. Rendered by page 09, enforced by a test |
 | `docs/ABOUT.md` | **NEW.** Canonical project description. README + HF card embed it between `about:start`/`about:end`; `web/app/layout.tsx` carries the one-liner. Gated by a test |
 | `docs/RESOURCES.md` | **NEW.** Evaluated tools and data APIs with verdicts, secret-handling rules, known duplications, house style |
-| `tests/test_core.py` | **25 tests**, no network |
+| `tests/test_core.py` | **26 tests**, no network |
 | `app.py` | Entry point; `_ROUTE` maps 14 pages; mounts `dashboard/api.py` via `extra_patterns` |
 | `scripts/refresh_data.py` | Chains ingest→process in order; `DATE_CACHES` regression gate |
 | `Dockerfile` · `requirements-space.txt` | HF Space (serve-only deps) |
@@ -162,7 +162,7 @@ caches only.
 ## Current State
 
 ### Done and verified ✅
-- **All 14 pages build**; 25 tests pass; deploy live and healthy.
+- **All 14 pages build**; 26 tests pass; deploy live and healthy.
 - **Phase 2b — LSTM exogenous channels:** shipped (`a00c56c`). The extra channels
   move where skill sits rather than rescuing the model, and page 03 says so.
 - **Phase 4 — JSON API:** shipped (`c42412d`). Eight endpoints under `/api`,
@@ -188,9 +188,10 @@ caches only.
 - Regime: **VERY STRONG EL NIÑO · 2026 · STRENGTHENING** (ONI +2.46 ASO; weekly
   Niño-3.4 +3.33 4-wk). Sep/Oct 2026 caches were silently stuck at AMJ +0.98, see
   the `is_fresh()` gotcha. Conviction haircut now **inactive** (+0.91 < 1.0).
-- PSL's SOI/PNA/WP mirror trails CPC by ~2 months, so analogs query 2 months behind
-  the ONI. CPC's own SOI (`cpc.ncep.noaa.gov/data/indices/soi`) is current, with
-  identical values.
+- **Analogs query 2 months behind the ONI, and the DMI sets that limit.** The SOI now
+  comes from CPC directly (907 months identical to PSL's copy, and current), but PSL's
+  `dmi.had.long.csv` still ends 2026-07. PNA and WP also end 2026-07, which caps
+  `lstm_exog`'s paired span. PDO now reads frozen (last value 2025-08); no model uses it.
 - **Every region reads WATCH, conviction 1.** Once the surrogate null landed, all
   seven links became `WEAK · confounded`, and the causal gate caps a weak link at
   WATCH regardless of magnitude. This is the gate working, not a placeholder.

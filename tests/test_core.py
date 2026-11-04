@@ -34,7 +34,7 @@ from lag_correlator import (  # noqa: E402
 from granger_ccm import ccm_convergence  # noqa: E402
 from weekly_nino34 import parse_weekly  # noqa: E402
 from source_registry import Source, _status  # noqa: E402
-from climate_indices import parse_dmi_csv, parse_psl_data  # noqa: E402
+from climate_indices import parse_cpc_soi, parse_dmi_csv, parse_psl_data  # noqa: E402
 from analogs import (  # noqa: E402
     EXCLUDE_MONTHS,
     FORWARD_MONTHS,
@@ -261,6 +261,26 @@ def test_psl_data_parser_reads_sentinel_from_file() -> None:
     assert df.iloc[0]["date"] == pd.Timestamp("1950-01-01")
     assert df.iloc[0]["value"] == 0.10
     assert df.iloc[2]["value"] == -4.00        # a large negative that is NOT the sentinel
+
+
+def test_cpc_soi_parser_keeps_anomaly_block_and_splits_glued_columns() -> None:
+    """CPC's file repeats the layout for a STANDARDIZED block, which would double every
+    month with the wrong values, and its columns touch once a value is long."""
+    header = "YEAR   JAN   FEB   MAR   APR   MAY   JUN   JUL   AUG   SEP   OCT   NOV   DEC\n"
+    text = (
+        "(STAND TAHITI - STAND DARWIN)  SEA LEVEL PRESS\n"
+        "                        ANOMALY\n"
+        + header
+        + "2026   1.8   2.4   2.0  -1.1  -1.5  -2.4  -4.0  -1.8  -3.3  -1.7-999.9-999.9\n"
+        + "                STANDARDIZED    DATA\n"
+        + header
+        + "2026   1.1   1.4   1.2  -0.6  -0.9  -1.4  -2.4  -1.1  -2.0  -1.1-999.9-999.9\n"
+    )
+    df = parse_cpc_soi(text)
+    assert len(df) == 10, "padding dropped, standardized block ignored"
+    assert df.iloc[0]["value"] == 1.8
+    assert df.iloc[-1]["date"] == pd.Timestamp("2026-10-01")
+    assert df.iloc[-1]["value"] == -1.7        # the value glued to the -999.9 padding
 
 
 def test_dmi_parser_drops_future_padding() -> None:

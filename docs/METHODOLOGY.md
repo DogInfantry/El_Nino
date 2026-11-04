@@ -288,19 +288,21 @@ work depends on, so the series is dropped rather than worked around.
   30-year bases. Values are close, not identical.
 - **SARIMA beats the LSTM** on this short univariate series. Both beat persistence at all 12
   leads. The result is reported as-is rather than tuned until deep learning wins.
-- **Ancillary indices update on ragged schedules.** SOI, PNA and WP run about a month ahead
-  of the Niño regions, which run ahead of TNI and the DMI. Any model consuming them must
-  handle a ragged right edge rather than assume a rectangular matrix.
+- **Ancillary indices update on ragged schedules.** Each one ends in a different month, and
+  the order changes over time. Any model consuming them must handle a ragged right edge
+  rather than assume a rectangular matrix. The SOI comes from NOAA CPC directly, because
+  PSL's copy has matched it exactly over 907 months while running up to three behind.
 
 ### Frozen upstreams
 
 Some public index files stop updating while still returning HTTP 200, so a naive fetch
-ships years-old data as if it were current. Two are known:
+ships years-old data as if it were current. Three are known:
 
 | File | Status | Handling |
 |---|---|---|
 | CPC `wksst8110.for` | frozen at 2021-01-27 | never fetched; only `wksst9120.for` is used |
 | PSL `amon.us.data` (AMO) | frozen at 2023-01 | fetched and flagged, excluded from model input |
+| PSL `pdo.data` (PDO) | last value 2025-08 | fetched and flagged, never a model input by design |
 
 `climate_indices.coverage()` computes each index's lag behind the freshest one and marks
 anything more than 400 days behind as frozen; `model_features()` drops those columns before
