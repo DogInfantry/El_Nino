@@ -65,10 +65,12 @@ logger = logging.getLogger(__name__)
 # observations. AMO never reaches here at all — model_features() drops it at source.
 EXOG = ("NINO12", "NINO3", "NINO4", "SOI", "DMI", "PNA", "WP")
 
-# If the exogenous channels cannot reach the ONI's own last month, the multivariate
-# arm would be forecasting from an older origin than the control and the comparison
-# would silently stop being paired. Fail loudly instead.
-MAX_EXOG_LAG_MONTHS = 1
+# Both arms are sliced to the common span below, so pairing holds at any lag; this
+# caps how far that span may trail the ONI before the comparison stops being current.
+# Was 1, which only held while the ONI itself was stuck (see refresh_data.py). With a
+# current ONI, the PSL mirror of SOI/PNA/WP trails by 2 months (CPC's own SOI is
+# current). 3 matches analogs.MAX_QUERY_LAG_MONTHS, the same state vector's limit.
+MAX_EXOG_LAG_MONTHS = 3
 
 
 def common_span(
