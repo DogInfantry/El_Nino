@@ -220,10 +220,10 @@ def _variant_card() -> pn.viewable.Viewable:
 def build_analog_chart(df: pd.DataFrame) -> go.Figure:
     """Every analog's forward ONI path, drawn individually.
 
-    Deliberately NOT a mean line with a band. The current analog set is bimodal — three
-    paths run to a strong event, two fade — and an average of those two outcomes is a
-    number that never happened and never will. Showing the paths shows the disagreement,
-    which is the actual information.
+    Deliberately NOT a mean line with a band. An analog set can split, some paths running
+    to a strong event while others fade, and an average of those outcomes is a number that
+    never happened. Showing the paths shows any disagreement, which is the actual
+    information.
     """
     fig = go.Figure()
     for rank in sorted(df["rank"].unique()):
@@ -266,6 +266,20 @@ def _analog_card() -> pn.viewable.Viewable:
     ends = df[df["lead"] == df["lead"].max()]
     strong = int((df.groupby("rank")["oni_fwd"].max() >= 1.0).sum())
     total = df["rank"].nunique()
+    # Adjacent months of one event are not independent precedents: 12 is EXCLUDE_MONTHS.
+    months = pd.DatetimeIndex(sorted(df["analog_date"].unique()))
+    gaps = (months.year[1:] - months.year[:-1]) * 12 + (months.month[1:] - months.month[:-1])
+    events = 1 + int((gaps > 12).sum())
+    if strong == total:
+        reading = (f"All {total} reached ONI ≥ +1.0, and they come from only "
+                   f"<b>{events} separate event{'s' if events != 1 else ''}</b>, so read "
+                   f"this as that many precedents, not {total}. The paths are drawn "
+                   "individually rather than averaged. ")
+    else:
+        reading = (f"<b>{strong} of {total}</b> went on to reach ONI ≥ +1.0; the rest "
+                   "faded. That split is the point: the mean of a split set is an outcome "
+                   "that never occurred, so the paths are drawn individually rather than "
+                   "averaged. ")
     rows = "".join(
         f"<tr><td>#{int(r['rank'])}</td><td><b>{r['analog_date']:%b %Y}</b></td>"
         f"<td>d={r['distance']:.2f}</td>"
@@ -282,10 +296,8 @@ def _analog_card() -> pn.viewable.Viewable:
     note = pn.pane.HTML(
         f"<div class='enso-note'><b>Analogs for {query:%b %Y}.</b> The five closest "
         "historical states, ranked by Euclidean distance over the ONI trajectory "
-        "(t−6…t), the Niño 1+2/3/4 pattern, SOI and DMI, all z-scored. "
-        f"<b>{strong} of {total}</b> went on to reach ONI ≥ +1.0; the rest faded. That "
-        "split is the point: the mean of a bimodal set is an outcome that never occurred, "
-        "so the paths are drawn individually rather than averaged. Neighbouring months are "
+        "(t−6…t), the Niño 1+2/3/4 pattern and the SOI, all z-scored. "
+        f"{reading}Neighbouring months are "
         "excluded (they share most of their trajectory), and every analog has a full "
         f"12-month observed future. <span style='opacity:.7'>{ANALOG_VERSION}</span>"
         f"<div style='margin-top:9px'>{table}</div></div>")

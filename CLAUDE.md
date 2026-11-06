@@ -188,19 +188,24 @@ caches only.
 - Regime: **VERY STRONG EL NIÑO · 2026 · STRENGTHENING** (ONI +2.46 ASO; weekly
   Niño-3.4 +3.33 4-wk). Sep/Oct 2026 caches were silently stuck at AMJ +0.98, see
   the `is_fresh()` gotcha. Conviction haircut now **inactive** (+0.91 < 1.0).
-- **Analogs query 2 months behind the ONI, and the DMI sets that limit.** The SOI now
-  comes from CPC directly (907 months identical to PSL's copy, and current), but PSL's
-  `dmi.had.long.csv` still ends 2026-07. PNA and WP also end 2026-07, which caps
-  `lstm_exog`'s paired span. PDO now reads frozen (last value 2025-08); no model uses it.
+- **Analogs no longer use the DMI** (`analog-v2`, 2026-11-06), so they track the ONI
+  month. PSL's HadISST DMI held them 2 months behind and showed no hindcast value;
+  ERSST-derived DMI was tested and rejected (r=0.80, opposite sign May/Jun 2026). Reasoning
+  and numbers at `analogs.POINT_INDICES`.
+- **The September analog set is 1997 and 1982 only:** five matches, two events. The page
+  now says so rather than calling it a split.
+- **Open: two DMI products on the desk.** The India engine uses ERSST DMI, `lstm_exog` uses
+  HadISST. SON IOD class differs in 22 of 75 years. The India result has not been rerun on
+  HadISST.
+- **`lstm_exog` is still capped by PSL.** The SOI now comes from CPC (907 months identical
+  to PSL's copy), but PNA, WP and DMI end 2026-07. If they trail the ONI by more than 3
+  months the refresh goes red. PDO reads frozen (last value 2025-08); no model uses it.
 - **Every region reads WATCH, conviction 1.** Once the surrogate null landed, all
   seven links became `WEAK · confounded`, and the causal gate caps a weak link at
   WATCH regardless of magnitude. This is the gate working, not a placeholder.
   `r_peak` is negative for 11 of 12 registry rows (Peru is the only positive).
   **Do not quote a current stance in prose**; it rots on the monthly cron. The
   README used to say "India WATCH, SE Asia CAUTIOUS" and was wrong within a month.
-- **Conviction haircut is ACTIVE** (observed−forecast = +1.01 °C > 1.0 tolerance).
-- **Analogs are bimodal:** May/Jun 1997 and May 2023 → +2.0…+2.4 at +6mo;
-  Sep/Oct 2006 → −0.1/−0.3. The +6mo mean of +1.27 describes none of them.
 - **India IOD hedge holds at full sample:** n=124, Niño-3.4 −8.01 (p<1e-4),
   DMI +5.26 (**p=0.0037**), R²=0.35. At n=75 it was p=0.059 — the record length
   changed the conclusion.

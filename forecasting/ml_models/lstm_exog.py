@@ -68,8 +68,8 @@ EXOG = ("NINO12", "NINO3", "NINO4", "SOI", "DMI", "PNA", "WP")
 # Both arms are sliced to the common span below, so pairing holds at any lag; this
 # caps how far that span may trail the ONI before the comparison stops being current.
 # Was 1, which only held while the ONI itself was stuck (see refresh_data.py). With a
-# current ONI, the PSL mirror of SOI/PNA/WP trails by 2 months (CPC's own SOI is
-# current). 3 matches analogs.MAX_QUERY_LAG_MONTHS, the same state vector's limit.
+# current ONI, PSL's PNA, WP and DMI trail by 2 months. 3 matches
+# analogs.MAX_QUERY_LAG_MONTHS.
 MAX_EXOG_LAG_MONTHS = 3
 
 

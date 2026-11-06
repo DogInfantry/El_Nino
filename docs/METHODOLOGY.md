@@ -292,6 +292,13 @@ work depends on, so the series is dropped rather than worked around.
   the order changes over time. Any model consuming them must handle a ragged right edge
   rather than assume a rectangular matrix. The SOI comes from NOAA CPC directly, because
   PSL's copy has matched it exactly over 907 months while running up to three behind.
+- **The analog engine ignores the Indian Ocean.** The DMI was removed from its state vector
+  because it held the query two months behind a fast-moving ONI and showed no hindcast
+  value: over 549 query months, +6mo RMSE 0.716 with it and 0.698 without. That comparison
+  is not out-of-sample and not significance-tested, so it shows the DMI earned no place,
+  not that removing it helps. An ERSST-derived DMI was rejected as a substitute (r=0.80
+  against HadISST since 1951). The India engine still uses the DMI, and the IOD stays a
+  live question for the monsoon even though it does not help match ONI paths.
 
 ### Frozen upstreams
 

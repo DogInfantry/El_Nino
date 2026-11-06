@@ -17,7 +17,7 @@ The state vector
 ----------------
 Per month: the ONI trajectory over t-6..t (level *and* slope — a +1.0 rising is not a +1.0
 fading), the Niño 1+2/3/4 pattern at t (east-vs-central structure, i.e. ENSO flavour), and
-SOI, DMI and PDO at t (atmospheric coupling, Indian Ocean state, low-frequency backdrop).
+the SOI at t (atmospheric coupling). See ``POINT_INDICES`` for why PDO and DMI are out.
 Every feature is z-scored over the full record before distance is measured, so no component
 dominates by virtue of its units.
 
@@ -63,7 +63,7 @@ from climate_indices import model_features  # noqa: E402
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CACHE_DIR = PROJECT_ROOT / "data" / "cache"
 
-ANALOG_VERSION = "analog-v1 (2026-08-07)"
+ANALOG_VERSION = "analog-v2 (2026-11-06)"
 
 TRAJECTORY_MONTHS = 6      # ONI lags t-6..t — captures level and direction
 FORWARD_MONTHS = 12        # how far ahead "what happened next" runs
@@ -78,7 +78,14 @@ TOP_K = 5
 # this engine answered for Aug 2025 while reporting itself as current. Its low-frequency
 # backdrop is not worth surrendering a year of recency, and forward-filling it would
 # manufacture observations, which is the same sin as imputing the SOI.
-POINT_INDICES = ("NINO12", "NINO3", "NINO4", "SOI", "DMI")
+#
+# DMI was removed on 2026-11-06 on the same trade. PSL's HadISST DMI held the query two
+# months behind the ONI while the ONI rose +1.80 to +2.46. Hindcast over 549 query months
+# (1980-2025), DMI vs none: +6mo RMSE 0.716 vs 0.698, +12mo 0.855 vs 0.829. Not
+# out-of-sample and not significance-tested, so this shows DMI earned no place, not that
+# removing it helps. An ERSST-derived DMI is no substitute: r=0.80 with HadISST since
+# 1951, and opposite sign in May and Jun 2026.
+POINT_INDICES = ("NINO12", "NINO3", "NINO4", "SOI")
 
 # The query must be this close to the newest ONI month, or the engine is answering a
 # question about the past while presenting itself as a nowcast. Raise instead.
