@@ -70,7 +70,7 @@ oni + commodities ──► exposure_index.py    ──► exposure_index.parque
 oni + commodities ──► landing_causation.py ──► landing_{ccm,verdicts}.parquet
 above + forecasts ──► positioning.py       ──► positioning.parquet
 oni + indices     ──► analogs.py           ──► analogs.parquet
-ERSST + IMD grid  ──► enso_flavor_iod.py   ──► india_{enso_iod,regression,years}.parquet
+ERSST + IMD grid  ──► enso_flavor_iod.py   ──► india_{enso_iod,enso_iod_hadisst,regression,robustness,iod_now,years}.parquet
 
 forecasting/baselines/arima_model.py    ──► arima_{forecast,backtest}.parquet
 forecasting/ml_models/lstm_enso.py      ──► lstm_{forecast,backtest}.parquet
