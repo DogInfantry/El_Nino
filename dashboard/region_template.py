@@ -105,7 +105,8 @@ class RegionConfig:
     thesis: str                                  # one-line thesis (HTML-safe)
     desk: dict                                   # badge, instruments, sub, engine_read, catalyst, risk
     kpis: list[tuple[str, str, str]]             # (label, value, color)
-    hotspots: list[tuple[str, float, float, float]]  # (name, lat, lon, pct) — pct<0 dry/red, >0 wet/blue
+    # (name, lat, lon, pct): pct<0 dry/red, >0 wet/blue, None marks a location with no reading
+    hotspots: list[tuple[str, float, float, float | None]]
     geo_scope: str                               # plotly geo scope, e.g. "asia"
     geo_lat: tuple[float, float]
     geo_lon: tuple[float, float]
@@ -114,8 +115,9 @@ class RegionConfig:
     history_rows: list[tuple[str, str, str, str, str]]  # (event, oni, chip_cls, outcome, note)
     causal_chain: list[tuple[str, str, str]]     # (label, value, color)
     footer: str
-    econ_takeaway: str = ("The price link is causal and lagged, position during the season, "
-                          "ahead of the price response.")
+    # None reads the verdict from the cache. This default once said "the price link is
+    # causal and lagged" whatever the verdict was.
+    econ_takeaway: str | None = None
 
 
 # ---- reusable climate exhibits ------------------------------------------
@@ -125,7 +127,7 @@ class RegionConfig:
 # to drift. These are the generic exhibits: one asks "does the phase matter at all", the
 # other "at what lag" — the whole question for a region whose story is timing.
 
-def phase_composite(commodity: str) -> tuple[go.Figure, dict]:
+def phase_composite(commodity: str, *, exclude_years: tuple[int, ...] = ()) -> tuple[go.Figure, dict]:
     """Mean YoY return of ``commodity`` by ENSO phase, computed from the caches."""
     from theme import load_commodities, load_phases
 
@@ -136,6 +138,7 @@ def phase_composite(commodity: str) -> tuple[go.Figure, dict]:
     phases = load_phases()[["date", "phase_simple"]]
     df = (pd.DataFrame({"date": yoy.index, "yoy": yoy.to_numpy()})
           .merge(phases, on="date").dropna())
+    df = df[~df["date"].dt.year.isin(exclude_years)]
     order = ["El Nino", "Neutral", "La Nina"]
     means = df.groupby("phase_simple")["yoy"].mean().reindex(order)
     counts = df.groupby("phase_simple")["yoy"].size().reindex(order)
@@ -217,6 +220,97 @@ def stance_from_cache(iso3: str) -> dict | None:
         return None if row.empty else row.iloc[0].to_dict()
     except Exception:  # noqa: BLE001 - never break a page build over a stance
         return None
+
+
+def minus(v: float, digits: int = 2) -> str:
+    """Signed number with a true minus sign, for copy."""
+    return f"{v:+.{digits}f}".replace("-", "−")
+
+
+def region_numbers(iso3: str) -> dict:
+    """Every figure a region page quotes about its price link, read from the caches.
+
+    These were typed into each page and drifted within three months: Peru's surrogate p
+    read 0.078 against a computed 0.066, and wheat's Granger count 8 against 9, because
+    the verdicts are re-estimated on every monthly refresh.
+    """
+    from positioning import VERDICT_KEY
+
+    pos = pd.read_parquet(_ROOT / "data" / "cache" / "positioning.parquet")
+    row = pos[pos["iso3"] == iso3].iloc[0]
+    verdicts = pd.read_parquet(_ROOT / "data" / "cache" / "landing_verdicts.parquet")
+    key = VERDICT_KEY.get(str(row["commodity"]))
+    v = verdicts[verdicts["commodity"] == key]
+    tested = not v.empty
+    v = v.iloc[0] if tested else {}
+    abs_r = pos["r_peak"].abs()
+    return dict(
+        r=float(row["r_peak"]), lag=int(row["horizon_mo"]),
+        horizon=_horizon_txt(int(row["horizon_mo"])), on_edge=int(row["horizon_mo"]) >= _MAX_LAG,
+        verdict=str(row["verdict"]), badge=str(row["badge"]), tested=tested,
+        granger=int(v["granger_sig"]) if tested else None,
+        p=float(v["ccm_p"]) if tested else None,
+        rho=float(v["ccm_rho"]) if tested else None,
+        null=float(v["ccm_null"]) if tested else None,
+        n_surrogates=int(v["n_surrogates"]) if tested else None,
+        granger_top=tested and int(v["granger_sig"]) == int(verdicts["granger_sig"].max()),
+        strongest_r=abs(row["r_peak"]) >= abs_r.max(),
+        biggest_positive=row["r_peak"] > 0 and row["r_peak"] >= pos["r_peak"].max(),
+        rank_from_weakest=int((abs_r < abs(row["r_peak"])).sum()) + 1, n_rows=len(pos))
+
+
+def null_read(n: dict) -> str:
+    """The surrogate result in words, whichever side of the line it lands on."""
+    if not n["tested"]:
+        return "there is no surrogate test for this commodity on the desk"
+    side = "clears" if n["p"] < 0.05 else "does not clear"
+    return f"surrogate p <b>{n['p']:.3f}</b> {side} 0.05"
+
+
+def price_kpis(n: dict) -> list[tuple[str, str, str]]:
+    """The four price-link tiles, the same on every region with no region-specific data."""
+    p_col = COLORS["muted"] if not n["tested"] or n["p"] >= 0.10 else AMBER if n["p"] >= 0.05 else COLORS["teal"]
+    return [("Peak r", minus(n["r"]), COLORS["la_nina"] if n["r"] > 0 else COLORS["el_nino"]),
+            ("Peak lag", n["horizon"], AMBER if n["on_edge"] else COLORS["text"]),
+            ("Granger", f"{n['granger']}/{_MAX_LAG} lags" if n["tested"] else "untested", AMBER),
+            ("Surrogate p", f"{n['p']:.3f}" if n["tested"] else "untested", p_col)]
+
+
+def latest_index(name: str) -> tuple[float, pd.Timestamp]:
+    """Newest value of a climate index, for the causal chain's driver step."""
+    idx = pd.read_parquet(_ROOT / "data" / "cache" / "climate_indices.parquet")
+    s = idx[idx["index"] == name].sort_values("date").iloc[-1]
+    return float(s["value"]), pd.Timestamp(s["date"])
+
+
+def event_row(year: int, commodity: str, cls: str, outcome: str, note: str,
+              *, window: tuple[str, str] | None = None, label: str | None = None,
+              ) -> tuple[str, str, str, str, str]:
+    """One history row: computed ONI peak and price move, around a typed physical note.
+
+    The default window runs June of the event year to December of the next, wide enough
+    to hold the lags these links are tested at. It reports the high as well as the end,
+    because one endpoint misleads: fishmeal rose 29% by Dec 1997 and ended that window
+    down 3%. Price claims stay out of the prose, where "fishmeal firm into 2016" sat over
+    a window that never rose.
+    """
+    oni = pd.read_parquet(_ROOT / "data" / "cache" / "oni.parquet").set_index("date")["oni"].astype(float)
+    start, end = window or (f"{year}-06-01", f"{year + 1}-12-01")
+    t0, t1 = pd.Timestamp(start), pd.Timestamp(end)
+    comm = load_commodities()
+    px = comm[comm["commodity"] == commodity].set_index("date")["price"].astype(float).sort_index().dropna()
+    name = commodity.split(",")[0]
+    if px.empty or t0 < px.index[0] or t1 > px.index[-1]:
+        move = f" No {name} price over this window."
+    else:
+        base, span = px.asof(t0), px.loc[t0:t1]
+        high, end = (span.max() / base - 1) * 100, (px.asof(t1) / base - 1) * 100
+        at_high = span.idxmax()
+        path = ("no rise, " if at_high == span.index[0] else
+                "" if at_high == span.index[-1] else f"high {minus(high, 0)}% ({at_high:%b %Y}), ")
+        move = f" {name} from {t0:%b %Y}: {path}{minus(end, 0)}% by {t1:%b %Y}."
+    peak = "n/a" if window else f"{oni.loc[f'{year}-06':f'{year + 1}-05'].max():+.1f}"
+    return (label or f"{year}–{str(year + 1)[2:]}", peak, cls, outcome, note + move)
 
 
 _MAX_LAG = 24   # the lag_correlator search window; a peak here may lie outside it
@@ -328,13 +422,17 @@ def _region_map(cfg: RegionConfig) -> go.Figure:
         marker_line_width=1, hoverinfo="skip"))
     if cfg.hotspots:
         # dry (pct<0) = amber/red dots; wet (pct>0) = blue dots (e.g. Peru floods)
-        cols = ["#ffce3a" if h[3] <= 0 else COLORS["la_nina"] for h in cfg.hotspots]
+        # pct None = a place with no reading: marked for geography, claiming nothing.
+        cols = [COLORS["muted"] if h[3] is None else "#ffce3a" if h[3] <= 0 else COLORS["la_nina"]
+                for h in cfg.hotspots]
         fig.add_trace(go.Scattergeo(
             lon=[h[2] for h in cfg.hotspots], lat=[h[1] for h in cfg.hotspots],
             mode="markers+text", showlegend=False,
-            text=[f"{h[0]} {h[3]:+.0f}%" for h in cfg.hotspots], textposition="top right",
+            text=[h[0] if h[3] is None else f"{h[0]} {h[3]:+.0f}%" for h in cfg.hotspots],
+            textposition="top right",
             textfont=dict(color="#c2cadb", size=9), hoverinfo="text",
-            marker=dict(size=[min(abs(h[3]) * 0.35, 16) for h in cfg.hotspots], color=cols,
+            marker=dict(size=[7 if h[3] is None else min(abs(h[3]) * 0.35, 16) for h in cfg.hotspots],
+                        color=cols,
                         opacity=0.75, line=dict(color="#0a0e1a", width=1))))
     style_figure(fig, height=380, margin=dict(l=4, r=4, t=30, b=4), showlegend=False,
                  title=dict(text=cfg.map_title, font=dict(size=12, color=COLORS["muted"])))
@@ -375,8 +473,19 @@ def _ccm_chart(ccm, name: str) -> go.Figure:
     return fig
 
 
+def price_takeaway(iso3: str) -> str:
+    """The Economics tab's takeaway, read from the verdict rather than asserted."""
+    n = region_numbers(iso3)
+    if str(stance_from_cache(iso3).get("verdict_cls", "")).lower() in _DIRECTIONAL_CLS:
+        return (f"<b>The price link reads {n['verdict']}</b>, peaking at {n['horizon']}. The "
+                "chart above lets you check the cross-map yourself.")
+    return (f"<b>The price link reads {n['verdict']}</b>: {null_read(n)}, so this page gives "
+            "no basis for a lagged price position. The physical link is the demonstrated one.")
+
+
 def _econ_tab(cfg: RegionConfig) -> pn.viewable.Viewable:
-    tk = pn.pane.HTML(f"<div class='tk'><span class='tg'>TAKEAWAY</span>{cfg.econ_takeaway}</div>")
+    takeaway = cfg.econ_takeaway or price_takeaway(cfg.iso3)
+    tk = pn.pane.HTML(f"<div class='tk'><span class='tg'>TAKEAWAY</span>{takeaway}</div>")
     if analyze is None:
         return pn.Column(pn.pane.HTML("<div class='card'>Causation engine unavailable.</div>"), tk)
     try:

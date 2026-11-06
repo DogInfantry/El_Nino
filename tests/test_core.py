@@ -283,6 +283,33 @@ def test_cpc_soi_parser_keeps_anomaly_block_and_splits_glued_columns() -> None:
     assert df.iloc[-1]["value"] == -1.7        # the value glued to the -999.9 padding
 
 
+def test_region_pages_read_their_figures_from_the_caches() -> None:
+    """Typed figures drifted within three months: Peru's p read 0.078 against a computed
+    0.066. These pages have no regional rainfall source, so a hotspot must carry no value."""
+    sys.path.insert(0, str(_ROOT / "dashboard"))
+    from region_template import event_row, null_read, price_kpis
+
+    for page in ("08_seasia", "11_brazil", "12_australia", "13_peru"):
+        src = (_ROOT / "dashboard" / "pages" / f"{page}.py").read_text(encoding="utf-8")
+        assert "kpis=price_kpis(NUM)" in src, f"{page} types its KPI tiles"
+        hotspots = re.search(r"hotspots=\[(.*?)\],\n", src, re.S).group(1)
+        assert not re.search(r",\s*-?\d+\)", hotspots), f"{page} types a hotspot figure"
+        assert not re.search(r"Niño-[\d.+]+ [+−-]\d", src), f"{page} types the driver value"
+
+    near = dict(tested=True, p=0.066, r=0.18, horizon="8 mo", on_edge=False, granger=21)
+    assert "does not clear" in null_read(near)
+    assert "does not clear" not in null_read({**near, "p": 0.01})
+    untested = {**near, "tested": False, "p": None, "granger": None}
+    assert "no surrogate test" in null_read(untested)
+    assert dict((k, v) for k, v, _ in price_kpis(untested))["Surrogate p"] == "untested"
+
+    # Fish meal's price record starts after 1972: a window it cannot cover says so.
+    assert "No Fish meal price" in event_row(1972, "Fish meal", "bad", "severe", "x.")[4]
+    row = event_row(1997, "Fish meal", "bad", "severe", "x.")
+    assert row[0] == "1997–98" and "from Jun 1997" in row[4] and "by Dec 1998" in row[4]
+    assert "high +29% (Dec 1997)" in row[4], "one endpoint would hide the rise"
+
+
 def test_iod_now_reads_the_season_not_the_calendar() -> None:
     """Page 07 once typed "this year's +IOD" while the season's DMI was neutral. The read
     must come from the season's months, and Jan-May must still report last year's monsoon."""

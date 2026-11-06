@@ -150,7 +150,7 @@ caches only.
 | `docs/METHODOLOGY.md` | **NEW.** Published weights, thresholds, limits, ISRO decision. Rendered by page 09, enforced by a test |
 | `docs/ABOUT.md` | **NEW.** Canonical project description. README + HF card embed it between `about:start`/`about:end`; `web/app/layout.tsx` carries the one-liner. Gated by a test |
 | `docs/RESOURCES.md` | **NEW.** Evaluated tools and data APIs with verdicts, secret-handling rules, known duplications, house style |
-| `tests/test_core.py` | **27 tests**, no network |
+| `tests/test_core.py` | **28 tests**, no network |
 | `app.py` | Entry point; `_ROUTE` maps 14 pages; mounts `dashboard/api.py` via `extra_patterns` |
 | `scripts/refresh_data.py` | Chains ingest→process in order; `DATE_CACHES` regression gate |
 | `Dockerfile` · `requirements-space.txt` | HF Space (serve-only deps) |
@@ -162,7 +162,7 @@ caches only.
 ## Current State
 
 ### Done and verified ✅
-- **All 14 pages build**; 27 tests pass; deploy live and healthy.
+- **All 14 pages build**; 28 tests pass; deploy live and healthy.
 - **Phase 2b — LSTM exogenous channels:** shipped (`a00c56c`). The extra channels
   move where skill sits rather than rescuing the model, and page 03 says so.
 - **Phase 4 — JSON API:** shipped (`c42412d`). Eight endpoints under `/api`,
@@ -200,7 +200,7 @@ caches only.
 - **Every region reads WATCH** (conviction moves with the haircut). Once the surrogate null landed, all
   seven links became `WEAK · confounded`, and the causal gate caps a weak link at
   WATCH regardless of magnitude. This is the gate working, not a placeholder.
-  `r_peak` is negative for 11 of 12 registry rows (Peru is the only positive).
+  Peru is the only meaningfully positive `r_peak` (Vietnam's is about +0.04).
   **Do not quote a current stance in prose**; it rots on the monthly cron. The
   README used to say "India WATCH, SE Asia CAUTIOUS" and was wrong within a month.
 - **India: the IOD offset's sign holds, its significance depends on specification.**
@@ -303,6 +303,15 @@ committed parquet with mtime = now, so any fetcher run without `--no-cache` sile
 re-serves the committed file. This froze the ONI at AMJ 2026 through the Sep and Oct
 2026 crons while both went green. **Every fetcher in `refresh_data.py` needs
 `--no-cache`.** The refresh now also fails if `source_registry` calls the ONI STALE.
+
+### Never type a figure into a region page
+`RegionConfig` invites it. Verdict stats move on every refresh (Peru's p went 0.078 to 0.066
+in three months), and four pages carried invented rainfall under an "illustrative" footnote.
+Use `region_template.region_numbers`, `price_kpis`, `latest_index`, `event_row`. A figure with
+no cache behind it is removed, and `test_region_pages_read_their_figures_from_the_caches`
+guards the KPIs and hotspots. Page-level physical notes in `event_row` and the impact chips
+are still typed and unsourced. Report a price window with both its high and its end: fishmeal
+rose 29% after Jun 1997 and ended the window down 3%.
 
 ### Frozen upstreams that still return HTTP 200
 - CPC `wksst8110.for` — frozen at 2021-01-27. Only `wksst9120.for` is live.

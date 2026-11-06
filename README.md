@@ -125,7 +125,7 @@ Anyone can plot a correlation between El Niño and cocoa prices. The hard part, 
 - **Convergent Cross Mapping / CCM** (nonlinear, Sugihara et al. *Science* 2012): does cross-map skill *rise and converge* with library size in **one direction only**? Self-coded via simplex projection, with no `pyEDM` dependency.
 - **Phase-randomized surrogate significance** (Ebisuzaki): does that skill beat a null built from the ONI's *own power spectrum* with the phases scrambled? This is the test that matters, because cross-map skill runs high between **any** two smooth seasonal series: two *independent* sine-plus-noise series score ρ ≈ 0.83 in this engine.
 
-**The result is deliberately humbling, and got more so.** Of the seven ONI→commodity-**price** links tested, **not one survives**. All seven read *weak, confounded*. Palm oil and wheat read *moderate* until they were tested against the null (p = 0.15 and p = 0.47). The sharpest lesson is Robusta: it has the **highest** raw ρ on the board at 0.32 and the **worst** p-value at 0.976, against a null that averages ρ 0.23 on its own. That ρ 0.32 was previously quoted here as the desk's strongest causal evidence; it is indistinguishable from chance. The best link is Peru/fishmeal, at 21 of 24 Granger lags and ρ 0.29 against a 0.10 null, and even so, at **p = 0.078**, it misses the bar and stays *weak*. So the takeaway the desk leads with is:
+**The result is deliberately humbling, and got more so.** Of the seven ONI→commodity-**price** links tested, **not one survives**. All seven read *weak, confounded*. Palm oil and wheat read *moderate* until they were tested against the null, and neither clears 0.05. The sharpest lesson is Robusta: it has the **highest** raw ρ on the board at 0.32 and the **worst** p-value at 0.976, against a null that averages ρ 0.23 on its own. That ρ 0.32 was previously quoted here as the desk's strongest causal evidence; it is indistinguishable from chance. The best link is Peru/fishmeal, at 21 of 24 Granger lags and ρ 0.29 against a 0.10 null, and even so, at **p = 0.078**, it misses the bar and stays *weak*. So the takeaway the desk leads with is:
 
 > **Not one of the seven ENSO→commodity-price links the desk tests survives causal testing.** The clean ENSO signal lives on the **climate and production** side, in the monsoon and Maritime Continent drought we *prove* in the region deep-dives, not in noisy monthly prices.
 
@@ -148,9 +148,9 @@ That "misattribution guard", showing the *computed* verdict instead of an assert
 | **08** | 🌴 SE Asia deep-dive | Palm oil; the ENSO-premium story fails its own composite |
 | **09** | 📐 Methodology | Renders [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) directly. One source of truth, no second copy to drift |
 | **10** | 🩺 Source Status | Per-feed freshness, measured **net of structural label lag**, leading with "Behind" rather than "Age" |
-| **11** | 🇧🇷 Brazil deep-dive | Arabica; the honest **no-trade** region. The phase composite hints at an El Niño premium, the lag profile finds nothing (peak r ≈ −0.07, on the window edge) |
-| **12** | 🇦🇺 Australia deep-dive | Wheat; the drought is real and the **price sign is inverted** (r = −0.27 at 4 mo): correct physics, wrong instrument |
-| **13** | 🇵🇪 Peru deep-dive | Fishmeal; the original El Niño and the desk's **best near-miss**, at 21/24 Granger lags and ρ 0.29 against a 0.10 null, surrogate p = 0.078 |
+| **11** | 🇧🇷 Brazil deep-dive | Arabica; the honest **no-trade** region. The phase composite hints at an El Niño premium, the lag profile finds almost nothing, and its peak sits on the window edge |
+| **12** | 🇦🇺 Australia deep-dive | Wheat; the drought is real and the **price sign is inverted**: correct physics, wrong instrument |
+| **13** | 🇵🇪 Peru deep-dive | Fishmeal; the original El Niño and the desk's **best near-miss**: the most Granger support on the desk, and a surrogate p that still misses 0.05 |
 
 **916 ENSO months · 42 events detected · 71 commodities · 2°×2° global SST grids from 1854 · 124 years of gridded Indian monsoon · 12-month forecast horizon · zero API keys required.**
 

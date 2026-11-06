@@ -158,12 +158,15 @@ Recomputed every month by `data/process/positioning.py`, after the verdicts it d
    *as* an override with its written reason, because a formula cannot see an export-policy
    catalyst, but it should not pretend the pin was computed either.
 
-### Current output
+### Worked example: output on 2026-08-07
 
-Regime: **WEAK EL NIÑO · 2026 · STRENGTHENING**. Observed-minus-forecast is **+1.01 °C**,
-past the 1.0 tolerance, so the conviction haircut is **active on every row**, because the ensemble
-decays toward neutral while the observed weekly reads +2.15, and the desk does not get to
-ignore that disagreement.
+This is a dated snapshot, kept to show how the numbers combine. Stances are re-estimated on
+every monthly refresh, so the current values are on each region page and at `/api/positioning`.
+
+That month the regime read **WEAK EL NIÑO · 2026 · STRENGTHENING**. Observed-minus-forecast was
+**+1.01 °C**, past the 1.0 tolerance, so the conviction haircut was **active on every row**,
+because the ensemble decayed toward neutral while the observed weekly read +2.15, and the desk
+does not get to ignore that disagreement.
 
 | iso3 | Commodity | r_peak | Lag | Impact | Verdict | Stance | Conv. |
 |---|---|---|---|---|---|---|---|
@@ -180,16 +183,16 @@ ignore that disagreement.
 | BRA | Coffee, Arabica | −0.066 | 24 mo † | −0.065 | UNTESTED | ● WATCH | 1/4 |
 | VNM | Coffee, Robusta | +0.038 | 12 mo | +0.037 | WEAK | ● WATCH | 1/4 |
 
-`PER` is the registry's only `wet`-sign row and the only **positive** `r_peak` on the desk.
-Every other entry is a drought story where El Niño suppresses supply; Peru is the opposite
-and oldest mechanism: warm coastal water shuts down the Humboldt upwelling, the anchoveta
-fishery closes, and fishmeal tightens about eight months later. It is the strongest link
-the desk has: **21 of 24 Granger lags** significant, cross-map `ρ = 0.29` against a
+`PER` is the registry's only `wet`-sign row and the only meaningfully **positive** `r_peak` on
+the desk. Every other entry is a drought story where El Niño suppresses supply; Peru is the
+opposite and oldest mechanism: warm coastal water shuts down the Humboldt upwelling, the
+anchoveta fishery closes, and fishmeal tightens about eight months later. It had the most
+Granger support on the desk: **21 of 24 lags** significant, cross-map `ρ = 0.29` against a
 seasonal null of `0.10`, and a surrogate `p = 0.078`, which does not clear `α = 0.05`.
-So it stays `WEAK · confounded` and `● WATCH`. Being the best available link does not earn
+So it stayed `WEAK · confounded` and `● WATCH`. Being the best available link does not earn
 a promotion; clearing the bar does.
 
-**Every row is now WATCH at conviction 1/4.** That is the surrogate gate arriving at the
+**Every row read WATCH at conviction 1/4.** That is the surrogate gate arriving at the
 positioning layer: with no link clearing the causal test, nothing is entitled to carry a
 direction, and a desk that still printed CAUTIOUS on palm oil would be asserting exactly
 the confidence its own evidence just withdrew. The flatness is the finding, not a bug,

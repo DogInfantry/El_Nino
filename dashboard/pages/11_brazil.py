@@ -25,13 +25,19 @@ sys.path.insert(0, str(_DASH_DIR))
 
 from theme import COLORS  # noqa: E402
 from region_template import (  # noqa: E402
-    RegionConfig, REGION_CSS, build_region, causal_chain, lag_profile, phase_composite,
+    RegionConfig, REGION_CSS, build_region, causal_chain, event_row, lag_profile, latest_index,
+    minus, phase_composite, price_kpis, region_numbers,
 )
 
 AMBER = COLORS.get("amber", "#f4b13a")
 pn.extension("plotly", raw_css=[REGION_CSS], sizing_mode="stretch_width")
 
 COMMODITY = "Coffee, Arabica"
+NUM = region_numbers("BRA")
+_NINO34, _ = latest_index("NINO34")
+_EDGE = "the 24-month window edge" if NUM["on_edge"] else NUM["horizon"]
+_RANK = (f"the smallest |r| of the {NUM['n_rows']} registry rows" if NUM["rank_from_weakest"] == 1
+         else f"number {NUM['rank_from_weakest']} from the bottom of the {NUM['n_rows']} registry rows")
 
 
 def brazil_climate() -> pn.viewable.Viewable:
@@ -54,9 +60,8 @@ def brazil_climate() -> pn.viewable.Viewable:
         "Coffee bulls quote exactly this. But a composite has no time axis, it cannot "
         "separate a drought transmitting into price from ENSO merely coinciding with a "
         "decade of coffee inflation. Put the lag axis back and the link collapses: peak "
-        f"<b style='color:#e8edf5'>r = {lag['peak_r']:+.3f}</b> at "
-        f"<b style='color:#e8edf5'>{lag['peak_lag']} mo</b>{edge}. That is the weakest "
-        "link in the whole registry.</div>")
+        f"<b style='color:#e8edf5'>r = {minus(lag['peak_r'], 3)}</b> at "
+        f"<b style='color:#e8edf5'>{lag['peak_lag']} mo</b>{edge}, {_RANK}.</div>")
     tk = pn.pane.HTML(
         "<div class='tk'><span class='tg'>MISATTRIBUTION GUARD</span>The frost risk that "
         "actually moves Arabica is a <b>mid-latitude cold-air outbreak</b>, not a tropical "
@@ -67,44 +72,44 @@ def brazil_climate() -> pn.viewable.Viewable:
 
 
 CFG = RegionConfig(
-    name="BRAZIL", flag="🇧🇷", iso3="BRA", regime="WEAK EL NIÑO · 2026",
-    thesis=("Brazil grows roughly a third of the world's Arabica, so any ENSO→coffee "
-            "transmission would matter enormously. The desk's own tests say there isn't one."),
+    name="BRAZIL", flag="🇧🇷", iso3="BRA", regime="EL NIÑO",
+    thesis=("Brazil is the world's largest Arabica producer, so any ENSO→coffee transmission "
+            "would matter enormously. The desk's own lag test does not find one."),
     desk=dict(
         badge="● WATCH", badge_cls="watch", instruments="Coffee, Arabica",
-        sub="no demonstrated ENSO link · structural exposure only",
-        engine_read=("Engine read: peak lagged correlation is <b>r ≈ −0.07 at the 24-month "
-                     "window edge</b>, the weakest in the registry, and the phase composite's "
-                     "apparent El Niño premium does not survive putting time back on the "
-                     "axis. Exposure here is <b>structural</b> (share of world supply), "
-                     "not causal."),
+        sub="stance cache missing",
+        engine_read=(f"Engine read: peak lagged correlation is <b>r = {minus(NUM['r'])} at "
+                     f"{_EDGE}</b>, {_RANK}, and the phase composite's apparent El Niño premium "
+                     "does not survive putting time back on the axis. Arabica has no surrogate "
+                     f"test on this desk, so the verdict reads <b>{NUM['verdict']}</b>. Exposure "
+                     "here is <b>structural</b> (share of world supply), not causal."),
         catalyst="<b>A mid-latitude frost event in Minas Gerais</b>: which ENSO does not forecast.",
         risk="<b>Trading this as an ENSO story.</b> The composite invites it; the lag profile refuses."),
-    kpis=[("Peak |r|", "0.07", COLORS["muted"]), ("Peak lag", "24 mo †", AMBER),
-          ("World Arabica share", "~1/3", COLORS["text"]),
-          ("ENSO link", "none found", COLORS["muted"])],
-    hotspots=[("Minas Gerais", -19.9, -44.0, -8), ("São Paulo", -22.0, -48.0, -6),
-              ("Espírito Santo", -19.5, -40.5, -5), ("Bahia (Cerrado)", -12.5, -42.0, -7)],
+    kpis=price_kpis(NUM),
+    hotspots=[("Minas Gerais", -19.9, -44.0, None), ("São Paulo", -22.0, -48.0, None),
+              ("Espírito Santo", -19.5, -40.5, None), ("Bahia (Cerrado)", -12.5, -42.0, None)],
     geo_scope="south america", geo_lat=(-28, -2), geo_lon=(-60, -35),
-    map_title="Brazilian Arabica belt · illustrative rainfall skew",
+    map_title="Brazilian Arabica belt · locations only, rainfall is not ingested",
     commodity=COMMODITY,
-    causal_chain=[("Driver", "Niño-3.4 +1.0°C", COLORS["el_nino"]),
+    causal_chain=[("Driver", f"Niño-3.4 {minus(_NINO34, 1)}°C", COLORS["el_nino"]),
                   ("Atmos", "Weak S. Atlantic signal", COLORS["muted"]),
                   ("Weather", "No robust skew", COLORS["muted"]),
                   ("Crop", "Frost = separate driver", AMBER),
-                  ("Market", "No lagged response", COLORS["muted"])],
+                  ("Market", f"Peak r {minus(NUM['r'])}", COLORS["muted"])],
     history_rows=[
-        ("1997–98", "+2.4", "mid", "mixed", "Strong El Niño; Arabica fell through 1998"),
-        ("2015–16", "+2.6", "mid", "mixed", "Cerrado drought, but price led by stocks"),
-        ("2021 frost", "n/a", "bad", "severe", "Price doubled, a NON-ENSO cold outbreak"),
-        ("2023–24", "+2.0", "mid", "mixed", "Rally driven by Robusta substitution, not ENSO")],
-    econ_takeaway=("<b>The honest read is no trade.</b> The lag test finds nothing and the "
-                   "peak sits on the window edge, so there is no horizon to position against."),
+        event_row(1997, COMMODITY, "mid", "mixed", "Strong El Niño."),
+        event_row(2015, COMMODITY, "mid", "mixed", "Cerrado drought, but price led by stocks."),
+        event_row(2021, COMMODITY, "bad", "severe", "A non-ENSO cold outbreak.",
+                  window=("2021-05-01", "2022-02-01"), label="2021 frost"),
+        event_row(2023, COMMODITY, "mid", "mixed", "Attributed to Robusta substitution, not ENSO.")],
+    econ_takeaway=("<b>The honest read is no trade.</b> The lag test finds little"
+                   + (" and the peak sits on the window edge, so there is no horizon to position "
+                      "against." if NUM["on_edge"] else ", and there is no surrogate test behind it.")),
     footer=("<b>Sources:</b> ENSO from NOAA CPC (ERSSTv5) · Arabica prices from the World Bank Pink "
             "Sheet · composite &amp; lag profile computed in-repo. &nbsp;<b>Caveat:</b> "
-            "hotspot rainfall figures are illustrative pending South-American precip "
-            "ingestion; the composite, the lag profile and the stance are computed. "
-            "Not investment advice."),
+            "South-American rainfall is not ingested, so the map marks locations and the impact "
+            "column is a qualitative note. The composite, the lag profile, the price moves and "
+            "the stance are computed. Not investment advice."),
 )
 
 build_region(CFG, climate_view=brazil_climate()).servable(

@@ -34,7 +34,7 @@ for p in (_DASH_DIR, _DASH_DIR.parent / "data" / "process"):
 
 from theme import COLORS, CACHE_DIR, style_figure  # noqa: E402
 from region_template import (  # noqa: E402
-    RegionConfig, REGION_CSS, build_region, causal_chain, stance_from_cache,
+    RegionConfig, REGION_CSS, build_region, causal_chain,
 )
 
 AMBER = COLORS.get("amber", "#f4b13a")
@@ -186,17 +186,6 @@ def _engine_read() -> str:
     return " ".join(parts)
 
 
-def _econ_takeaway() -> str:
-    s = stance_from_cache("IND") or {}
-    verdict = str(s.get("verdict", "UNTESTED"))
-    if str(s.get("verdict_cls", "")).lower() in ("causal", "mod"):
-        return (f"<b>The price link reads {verdict}</b>, peaking at a {int(s['horizon_mo'])} month "
-                "lag. The chart above lets you check the cross-map yourself.")
-    return (f"<b>The price link reads {verdict}</b>: it does not beat its surrogate null, so this "
-            "page gives no basis for a lagged price position. The monsoon link above is the "
-            "demonstrated one.")
-
-
 def _history_row(year: int, note: str) -> tuple[str, str, str, str, str]:
     """ONI peak over the event year and the gridded departure, both from the caches."""
     r = YEARS[YEARS["year"] == year].iloc[0]
@@ -245,7 +234,6 @@ CFG = RegionConfig(
         _history_row(1997, f"<b style='color:#c2cadb'>Broken link</b>: strong +IOD (SON DMI {_dmi_son(1997):+.2f}) offset it"),
         _history_row(2015, f"Only modest +IOD (DMI {_dmi_son(2015):+.2f}) → drought"),
         _history_row(2023, "Rice export ban; sugar curbs → global ripple")],
-    econ_takeaway=_econ_takeaway(),
     footer=("<b>Sources:</b> ENSO/IOD computed from ERSSTv5, second DMI from NOAA PSL (HadISST) · "
             f"monsoon = IMD <b>0.25° gridded</b> JJAS, area-weighted by cos(lat), {_FIRST}–{_LAST} "
             "(1971–2020 normal 858.9 mm vs IMD's published ~868 mm; it approximates the official "
