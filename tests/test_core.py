@@ -283,6 +283,28 @@ def test_cpc_soi_parser_keeps_anomaly_block_and_splits_glued_columns() -> None:
     assert df.iloc[-1]["value"] == -1.7        # the value glued to the -999.9 padding
 
 
+def test_iod_now_reads_the_season_not_the_calendar() -> None:
+    """Page 07 once typed "this year's +IOD" while the season's DMI was neutral. The read
+    must come from the season's months, and Jan-May must still report last year's monsoon."""
+    from enso_flavor_iod import iod_now
+
+    dates = pd.date_range("2025-06-01", "2026-03-01", freq="MS")
+    df = pd.DataFrame({"date": dates, "y": dates.year, "mo": dates.month,
+                       "nino34": 2.0, "dmi": 0.5})
+    df.loc[df["date"] == "2025-09-01", "dmi"] = -1.1       # JJAS mean: (0.5*3 - 1.1)/4 = 0.1
+    now = iod_now(df, pd.Series([0.4], index=[pd.Timestamp("2025-06-01")])).iloc[0]
+    assert now["year"] == 2025 and now["n_months"] == 4, "Mar 2026 is still the 2025 monsoon"
+    assert abs(now["dmi"] - 0.1) < 1e-9 and now["iod_cell"] == "IOD-neu"
+    assert now["enso_cell"] == "El Nino"
+    assert now["had_months"] == 1 and now["had_dmi"] == 0.4
+    assert now["latest_date"] == pd.Timestamp("2026-03-01")
+
+    # A season in progress reports what exists and says how much that is.
+    part = iod_now(df[df["date"] <= "2025-07-01"], pd.Series(dtype=float)).iloc[0]
+    assert part["n_months"] == 2 and part["dmi"] == 0.5 and part["iod_cell"] == "IOD-pos"
+    assert np.isnan(part["had_dmi"]) and part["had_months"] == 0
+
+
 def test_dmi_parser_drops_future_padding() -> None:
     """The DMI csv pads the rest of the current year with -9999; keeping it would make
     "latest DMI" report December of this year with a garbage value."""

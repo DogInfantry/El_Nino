@@ -252,8 +252,8 @@ reasoning that pre-1950 years have no ONI to pair with, but the India regression
 ERSSTv5-derived Niño-3.4 and DMI, which run back to 1854, so the cutoff discarded usable
 sample. At n = 75 the IOD coefficient sat at p = 0.059 and read as marginal; over the full
 n = 124 it is **p = 0.0037**. The India desk view leans on an "IOD hedge", and at the
-shorter sample that lean was not supported. Backfilling ~1.2 GB bought a conclusion that
-was otherwise unavailable.
+shorter sample that lean was not supported. Backfilling ~1.2 GB bought a stronger reading,
+though the checks below show how far it goes.
 
 Full-sample OLS, monsoon % departure on concurrent JJAS ENSO and IOD (n = 124):
 
@@ -263,9 +263,31 @@ Full-sample OLS, monsoon % departure on concurrent JJAS ENSO and IOD (n = 124):
 | DMI (IOD) | +5.26 | 0.0037 |
 | R² | 0.35 | |
 
-P(deficient monsoon) under El Niño is monotonic in the IOD: **1.00** with a negative IOD,
-**0.80** neutral, **0.43** positive. A positive IOD roughly halves it. Cell counts are still
-small (~20 El Niño events), so the regression, not the 3×3 grid, carries the significance.
+**The result depends on specification, and the desk shows that.** ERSST and HadISST are two
+readings of the same ocean (JJAS r = 0.84), and neither is ground truth. The DMI coefficient
+across both, also shown on page 07:
+
+| Sample / model | ERSST DMI | HadISST DMI |
+|---|---|---|
+| 1901–2024 | +5.26, p = 0.004 | +6.28, p = 0.004 |
+| 1901–2024, with a year trend | +4.33, p = 0.014 | +3.96, p = 0.086 |
+| 1951–2024 | +4.48, p = 0.061 | +4.39, p = 0.105 |
+| 1981–2024 | +6.96, p = 0.014 | +9.94, p = 0.006 |
+
+The sign holds in every row, so a positive IOD offsetting El Niño is a fair claim. The
+significance does not, so the size should not be leaned on. None of this is corrected for
+testing several specifications.
+
+**The P(deficient monsoon) grid carries no call.** Under El Niño it reads 1.00 / 0.80 / 0.43
+for a negative / neutral / positive IOD on ERSST, which looks monotonic. On HadISST the same
+14 seasons read 0.75 / 0.50 / 0.67, and 7 of the 14 change cell. A one-sided Fisher test of
+positive IOD against the rest is not significant on either series (p = 0.13, 0.76). The page
+shows both with their counts, as a picture of the record rather than a probability.
+
+**This season is read from the data.** Page 07 reports the season's ENSO and IOD from
+`iod_now()`, not from prose, and says so when Niño-3.4 sits outside the range the regression
+was fitted on. The rainfall record ends in 2024 because the IMD grid is a manual download, so
+the desk does not state a monsoon outcome for later seasons.
 
 Averaging 36 subdivisions equally over-weights small very wet ones (the north-east, the
 Konkan coast); cos(lat) area weighting removes that bias, which is what the old r = 0.77

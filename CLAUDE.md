@@ -112,7 +112,7 @@ caches only.
 | `dashboard/pages/04_sector_impact.py` | Altair lag heatmap, ranked bar |
 | `dashboard/pages/05_causation.py` | Live Granger + CCM per commodity |
 | `dashboard/pages/06_historical.py` | Per-event cards since 1950 |
-| `dashboard/pages/07_india.py` | India deep-dive. **Reads n from `india_regression.parquet`** — never hard-code it again |
+| `dashboard/pages/07_india.py` | India deep-dive. **Every number reads from a cache**, including this season's ENSO and IOD. Never type a current figure into it |
 | `dashboard/pages/08_seasia.py` | SE Asia (palm oil); ENSO-phase composite = second misattribution example |
 | `dashboard/pages/09_methodology.py` | **NEW.** Renders `docs/METHODOLOGY.md` directly (no second copy) |
 | `dashboard/pages/10_status.py` | **NEW.** Source freshness table; leads with "Behind", not "Age" |
@@ -150,7 +150,7 @@ caches only.
 | `docs/METHODOLOGY.md` | **NEW.** Published weights, thresholds, limits, ISRO decision. Rendered by page 09, enforced by a test |
 | `docs/ABOUT.md` | **NEW.** Canonical project description. README + HF card embed it between `about:start`/`about:end`; `web/app/layout.tsx` carries the one-liner. Gated by a test |
 | `docs/RESOURCES.md` | **NEW.** Evaluated tools and data APIs with verdicts, secret-handling rules, known duplications, house style |
-| `tests/test_core.py` | **26 tests**, no network |
+| `tests/test_core.py` | **27 tests**, no network |
 | `app.py` | Entry point; `_ROUTE` maps 14 pages; mounts `dashboard/api.py` via `extra_patterns` |
 | `scripts/refresh_data.py` | Chains ingest→process in order; `DATE_CACHES` regression gate |
 | `Dockerfile` · `requirements-space.txt` | HF Space (serve-only deps) |
@@ -162,7 +162,7 @@ caches only.
 ## Current State
 
 ### Done and verified ✅
-- **All 14 pages build**; 26 tests pass; deploy live and healthy.
+- **All 14 pages build**; 27 tests pass; deploy live and healthy.
 - **Phase 2b — LSTM exogenous channels:** shipped (`a00c56c`). The extra channels
   move where skill sits rather than rescuing the model, and page 03 says so.
 - **Phase 4 — JSON API:** shipped (`c42412d`). Eight endpoints under `/api`,
@@ -194,21 +194,24 @@ caches only.
   and numbers at `analogs.POINT_INDICES`.
 - **The September analog set is 1997 and 1982 only:** five matches, two events. The page
   now says so rather than calling it a split.
-- **Open: two DMI products on the desk.** The India engine uses ERSST DMI, `lstm_exog` uses
-  HadISST. SON IOD class differs in 22 of 75 years. The India result has not been rerun on
-  HadISST.
 - **`lstm_exog` is still capped by PSL.** The SOI now comes from CPC (907 months identical
   to PSL's copy), but PNA, WP and DMI end 2026-07. If they trail the ONI by more than 3
   months the refresh goes red. PDO reads frozen (last value 2025-08); no model uses it.
-- **Every region reads WATCH, conviction 1.** Once the surrogate null landed, all
+- **Every region reads WATCH** (conviction moves with the haircut). Once the surrogate null landed, all
   seven links became `WEAK · confounded`, and the causal gate caps a weak link at
   WATCH regardless of magnitude. This is the gate working, not a placeholder.
   `r_peak` is negative for 11 of 12 registry rows (Peru is the only positive).
   **Do not quote a current stance in prose**; it rots on the monthly cron. The
   README used to say "India WATCH, SE Asia CAUTIOUS" and was wrong within a month.
-- **India IOD hedge holds at full sample:** n=124, Niño-3.4 −8.01 (p<1e-4),
-  DMI +5.26 (**p=0.0037**), R²=0.35. At n=75 it was p=0.059 — the record length
-  changed the conclusion.
+- **India: the IOD offset's sign holds, its significance depends on specification.**
+  n=124, Niño-3.4 −8.01 (p<1e-4), DMI +5.26 (p=0.0037) on ERSST, +6.28 (p=0.0043) on
+  HadISST. With a year trend HadISST reads p=0.086; from 1951 neither clears 5%. **Do not
+  quote p=0.0037 alone.** `india_robustness.parquet` holds the table, page 07 shows it.
+- **The El Niño drought cells carry no call.** 1.00/0.80/0.43 on ERSST, 0.75/0.50/0.67 on
+  HadISST, 7 of 14 seasons change cell. Never present 0.43 vs 0.80 as a hedge.
+- **2026 sits outside the India regression's range:** JJAS Niño-3.4 +2.22 vs a record max
+  of +1.69 (2015), and ERSST JJAS DMI read neutral (+0.05). Page 07 reports both from
+  `india_iod_now.parquet`.
 
 ### Not done ❌ / deliberately deferred
 - **`mcp_server.py` never built.** The API half of Phase 4 shipped; the MCP half

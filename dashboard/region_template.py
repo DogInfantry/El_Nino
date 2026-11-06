@@ -242,7 +242,7 @@ def _apply_stance(cfg: RegionConfig) -> dict | None:
     Replaced (these go stale with the regime): ``regime``, the DESK VIEW badge, and the
     sub-line. Kept (a formula cannot see them): ``instruments``, ``catalyst``, ``risk``
     and ``engine_read`` — the latter carries genuine per-region analysis such as India's
-    fitted P(deficient monsoon).
+    computed ENSO and IOD reading for the season.
     """
     s = stance_from_cache(cfg.iso3)
     if not s:

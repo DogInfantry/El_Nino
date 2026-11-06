@@ -188,6 +188,74 @@ def _monsoon_series() -> pd.DataFrame:
     return mon
 
 
+# The P(deficient) grid's bins, shared with iod_now() so the page's "current cell" is the
+# same cut the grid was built on.
+_ENSO_BINS, _ENSO_LABELS = [-9, -0.5, 0.5, 9], ["La Nina", "Neutral", "El Nino"]
+_IOD_BINS, _IOD_LABELS = [-9, -0.2, 0.2, 9], ["IOD-neg", "IOD-neu", "IOD-pos"]
+_JJAS_MONTHS = (6, 7, 8, 9)
+
+
+def _hadisst_dmi() -> pd.Series:
+    """PSL's HadISST DMI from the indices cache: the desk's second reading of the IOD."""
+    idx = pd.read_parquet(CACHE_DIR / "climate_indices.parquet")
+    return idx[idx["index"] == "DMI"].set_index("date")["value"].astype(float).sort_index()
+
+
+def _jjas_mean(s: pd.Series, year: int) -> float:
+    """JJAS mean, NaN unless all four months exist. A partial season is not a season."""
+    vals = s.reindex([pd.Timestamp(year, m, 1) for m in _JJAS_MONTHS])
+    return float(vals.mean()) if vals.notna().all() else np.nan
+
+
+def _cells(d: pd.DataFrame, dmi_col: str) -> pd.DataFrame:
+    """P(deficient) by ENSO x IOD, on one DMI series. Keeps counts: these cells are small."""
+    t = d[["nino34", dmi_col, "category"]].dropna()
+    enso = pd.cut(t["nino34"], _ENSO_BINS, labels=_ENSO_LABELS).rename("enso")
+    iodp = pd.cut(t[dmi_col], _IOD_BINS, labels=_IOD_LABELS).rename("iodp")
+    deficient = (t["category"] == "DEFICIENT").astype(int)
+    return (deficient.groupby([enso, iodp], observed=False)
+            .agg(p_deficient="mean", n="size", n_deficient="sum").reset_index())
+
+
+def robustness(d: pd.DataFrame) -> pd.DataFrame:
+    """The DMI coefficient on both series, across the specifications that move it.
+
+    A single p-value oversold this result. ERSST and HadISST read the same ocean with
+    r~0.8 and different trends, so the published OLS is shown beside a trend control and
+    the shorter samples rather than standing alone.
+    """
+    hi = int(d["year"].max())
+    specs = [(f"1901–{hi}", d, ""), (f"1901–{hi}, year trend", d, " + year"),
+             (f"1951–{hi}", d[d["year"] >= 1951], ""), (f"1981–{hi}", d[d["year"] >= 1981], "")]
+    rows = []
+    for label, sub, extra in specs:
+        for series, col in (("ERSST", "dmi"), ("HadISST", "dmi_had")):
+            m = smf.ols(f"lpa_pct ~ nino34 + {col}{extra}", data=sub.dropna(subset=[col])).fit()
+            rows.append(dict(spec=label, series=series, coef=float(m.params[col]),
+                             p=float(m.pvalues[col]), n=int(m.nobs)))
+    return pd.DataFrame(rows)
+
+
+def iod_now(df: pd.DataFrame, had: pd.Series) -> pd.DataFrame:
+    """This monsoon season's ENSO and IOD reading, from the latest SST rather than prose.
+
+    The season is the newest year with a June in the record, so January to May still
+    reports last year's monsoon. ``n_months`` is under 4 while a season is in progress.
+    """
+    df = df.dropna(subset=["dmi", "nino34"])
+    year = int(df.loc[df["mo"] == 6, "y"].max())
+    season = df[(df["y"] == year) & df["mo"].isin(_JJAS_MONTHS)]
+    had_vals = had.reindex([pd.Timestamp(year, m, 1) for m in _JJAS_MONTHS]).dropna()
+    nino34, dmi = float(season["nino34"].mean()), float(season["dmi"].mean())
+    return pd.DataFrame([dict(
+        year=year, n_months=len(season), nino34=nino34, dmi=dmi,
+        enso_cell=str(pd.cut([nino34], _ENSO_BINS, labels=_ENSO_LABELS)[0]),
+        iod_cell=str(pd.cut([dmi], _IOD_BINS, labels=_IOD_LABELS)[0]),
+        had_dmi=float(had_vals.mean()) if len(had_vals) else np.nan,
+        had_months=len(had_vals), latest_date=df["date"].iloc[-1],
+        latest_dmi=float(df["dmi"].iloc[-1]))])
+
+
 def scenario_outputs() -> dict:
     """Full-sample (n~117) analysis — returns data (no printing) for the dashboard.
 
@@ -210,20 +278,21 @@ def scenario_outputs() -> dict:
                dmi_coef=float(m.params["dmi"]), dmi_p=float(m.pvalues["dmi"]),
                r2=float(m.rsquared), n=int(m.nobs))
 
-    d["enso"] = pd.cut(d["nino34"], [-9, -0.5, 0.5, 9], labels=["La Nina", "Neutral", "El Nino"])
-    d["iodp"] = pd.cut(d["dmi"], [-9, -0.2, 0.2, 9], labels=["IOD-neg", "IOD-neu", "IOD-pos"])
-    d["deficient"] = (d["category"] == "DEFICIENT").astype(int)
-    grid = (d.groupby(["enso", "iodp"], observed=False)["deficient"]
-            .agg(p_deficient="mean", n="size").reset_index())
-    return dict(reg=reg, grid=grid, years=d)
+    had = _hadisst_dmi()
+    d["dmi_had"] = [_jjas_mean(had, int(y)) for y in d["year"]]
+    return dict(reg=reg, grid=_cells(d, "dmi"), grid_had=_cells(d, "dmi_had"),
+                robustness=robustness(d), now=iod_now(df, had), years=d)
 
 
 def write_cache() -> None:
     """Persist the scenario outputs so the dashboard never touches the netCDF."""
     out = scenario_outputs()
     out["grid"].to_parquet(CACHE_DIR / "india_enso_iod.parquet", index=False)
+    out["grid_had"].to_parquet(CACHE_DIR / "india_enso_iod_hadisst.parquet", index=False)
+    out["robustness"].to_parquet(CACHE_DIR / "india_robustness.parquet", index=False)
+    out["now"].to_parquet(CACHE_DIR / "india_iod_now.parquet", index=False)
     pd.DataFrame([out["reg"]]).to_parquet(CACHE_DIR / "india_regression.parquet", index=False)
-    out["years"][["year", "nino34", "dmi", "dmi_son", "lpa_pct", "category"]].to_parquet(
+    out["years"][["year", "nino34", "dmi", "dmi_had", "dmi_son", "lpa_pct", "category"]].to_parquet(
         CACHE_DIR / "india_years.parquet", index=False)
 
 
@@ -239,10 +308,16 @@ def powered() -> None:
     print(f"  R2 = {reg['r2']:.2f}")
     print("\nP(deficient monsoon) by ENSO x IOD (all years):")
     print(grid.pivot(index="enso", columns="iodp", values="p_deficient").round(2).to_string())
+    print("\nSame grid on HadISST DMI. Cells that move between series carry no call:")
+    print(out["grid_had"].pivot(index="enso", columns="iodp", values="p_deficient").round(2).to_string())
+    print("\nDMI coefficient across series and specifications:")
+    print(out["robustness"].round(4).to_string(index=False))
+    print("\nThis season:")
+    print(out["now"].round(2).to_string(index=False))
 
 
 if __name__ == "__main__":
     analyse(build_table())
     powered()
     write_cache()
-    print("\nCached: india_enso_iod.parquet, india_regression.parquet, india_years.parquet")
+    print("\nCached: india_{enso_iod,enso_iod_hadisst,regression,robustness,iod_now,years}.parquet")
